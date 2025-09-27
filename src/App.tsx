@@ -1,35 +1,43 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Header } from "./components/Header";
+import { HeroSection } from "./components/HeroSection";
+import { ValueProposition } from "./components/ValueProposition";
+import { TeacherIntroduction } from "./components/TeacherIntroduction";
+import { CoursesOverview } from "./components/CoursesOverview";
+import { Testimonials } from "./components/Testimonials";
+import { FinalCTA } from "./components/FinalCTA";
+import { Footer } from "./components/Footer";
+import { CoursesPage } from "./pages/CoursesPage";
 
-function App() {
-  const [count, setCount] = useState(0)
-
+function Home() {
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      <HeroSection />
+      <ValueProposition />
+      <TeacherIntroduction />
+      <CoursesOverview />
+      <Testimonials />
+      <FinalCTA />
     </>
-  )
+  );
 }
 
-export default App
+export default function App() {
+  return (
+    <Router>
+      <div className="min-h-screen bg-background">
+        {/* SEO Meta Information - Would be handled by a meta framework like Next.js */}
+        <title>Online Quran & Arabic Classes for Kids & Adults | Learn Tajweed</title>
+        
+        <Header />
+        <main>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/courses" element={<CoursesPage />} />
+          </Routes>
+        </main>
+        <Footer />
+      </div>
+    </Router>
+  );
+}
