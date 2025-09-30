@@ -26,7 +26,7 @@ export function HeroSection() {
                 </Button>
                 <div className="flex items-center gap-1 text-sm text-muted-foreground mt-2">
                   <Info className="w-4 h-4 mr-2" />
-                  <span>30 min Sessions for 3 days</span>
+                  <span>3-day trial with 30-minute sessions each</span>
                 </div>
               </div>
               <Button variant="outline" size="lg" className="text-lg px-8 py-6">

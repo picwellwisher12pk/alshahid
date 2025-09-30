@@ -4,7 +4,7 @@ export function Footer() {
   const quickLinks = [
     { name: "Homepage", href: "#home" },
     { name: "Courses", href: "#courses" },
-    { name: "Pricing", href: "#pricing" },
+    // { name: "Pricing", href: "#pricing" },
     { name: "About Us", href: "#about" },
     { name: "Contact", href: "#contact" }
   ];
@@ -44,14 +44,38 @@ export function Footer() {
             </p>
 
             <div className="space-y-3">
-              <div className="flex items-center space-x-3">
+              <a 
+                href="https://wa.me/923004196274" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center space-x-3 hover:text-white transition-colors"
+              >
+                <Phone className="w-4 h-4 text-white/60" />
+                <span className="text-sm">+92 300 4196274</span>
+              </a>
+              <a 
+                href="https://wa.me/923104362226" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center space-x-3 hover:text-white transition-colors"
+              >
                 <Phone className="w-4 h-4 text-white/60" />
                 <span className="text-sm">+92 310 4362226</span>
-              </div>
-              <div className="flex items-center space-x-3">
+              </a>
+              <a 
+                href="mailto:shahidmajeed612@gmail.com" 
+                className="flex items-center space-x-3 hover:text-white transition-colors"
+              >
                 <Mail className="w-4 h-4 text-white/60" />
-                <span className="text-sm">info@alshahidacademy.com</span>
-              </div>
+                <span className="text-sm">shahidmajeed612@gmail.com</span>
+              </a>
+              <a 
+                href="mailto:infoalshahidinstitute@gmail.com" 
+                className="flex items-center space-x-3 hover:text-white transition-colors"
+              >
+                <Mail className="w-4 h-4 text-white/60 opacity-0" />
+                <span className="text-sm">infoalshahidinstitute@gmail.com</span>
+              </a>
               <div className="flex items-center space-x-3">
                 <Clock className="w-4 h-4 text-white/60" />
                 <span className="text-sm">Available 24/7</span>

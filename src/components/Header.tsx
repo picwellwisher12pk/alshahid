@@ -31,7 +31,6 @@ export function Header() {
             >
               Courses
             </NavLink>
-            <a href="#pricing" className="text-foreground hover:text-primary transition-colors">Pricing</a>
             <a href="#testimonials" className="text-foreground hover:text-primary transition-colors">Testimonials</a>
             <a href="#contact" className="text-foreground hover:text-primary transition-colors">Contact</a>
           </nav>
@@ -42,10 +41,10 @@ export function Header() {
                 <Phone className="w-4 h-4" />
                 <span>+92 310 4362226</span>
               </div>
-              <div className="flex items-center space-x-1">
+              <a href="mailto:infoalshahidinstitute@gmail.com" className="flex items-center space-x-1 hover:text-primary transition-colors">
                 <Mail className="w-4 h-4" />
-                <span>info@alshahid.com</span>
-              </div>
+                <span>infoalshahidinstitute@gmail.com</span>
+              </a>
             </div>
             <Button>Book Free Trial</Button>
           </div>

@@ -1,6 +1,9 @@
 import { Card, CardContent } from "./ui/card";
-import { Star, Quote } from "lucide-react";
+import { Star, Quote, ChevronLeft, ChevronRight } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import useEmblaCarousel from 'embla-carousel-react';
+import { useCallback, useEffect, useState } from 'react';
+import Autoplay from 'embla-carousel-autoplay';
 
 export function Testimonials() {
   const testimonials = [
@@ -43,10 +46,66 @@ export function Testimonials() {
     }
   ];
 
+  const [emblaRef, emblaApi] = useEmblaCarousel({ 
+    loop: true,
+    align: 'start',
+    breakpoints: {
+      '(min-width: 768px)': { slidesToScroll: 2 },
+      '(min-width: 1024px)': { slidesToScroll: 3 },
+    },
+  }, [Autoplay({ delay: 5000, stopOnInteraction: true })]);
+  
+  const [isHovered, setIsHovered] = useState(false);
+  const autoplay = emblaApi?.plugins()?.autoplay;
+  
+  useEffect(() => {
+    if (!autoplay) return;
+    
+    if (isHovered) {
+      autoplay.stop();
+    } else {
+      autoplay.play();
+    }
+  }, [isHovered, autoplay]);
+
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
+
+  const scrollTo = useCallback((index: number) => {
+    if (!emblaApi) return;
+    emblaApi.scrollTo(index);
+  }, [emblaApi]);
+
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev();
+  }, [emblaApi]);
+
+  const scrollNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext();
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+
+    const onSelect = () => {
+      setSelectedIndex(emblaApi.selectedScrollSnap());
+    };
+
+    setScrollSnaps(emblaApi.scrollSnapList());
+    emblaApi.on('select', onSelect);
+    onSelect();
+
+    return () => {
+      emblaApi.off('select', onSelect);
+    };
+  }, [emblaApi]);
+
   return (
     <section id="testimonials" className="py-16 lg:py-24 bg-gradient-to-br from-blue-50 to-green-50">
-      <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
+      <div className="container mx-auto px-4" 
+           onMouseEnter={() => setIsHovered(true)}
+           onMouseLeave={() => setIsHovered(false)}>
+        <div className="text-center mb-12">
           <h2 className="text-3xl lg:text-4xl mb-6 text-primary">
             What Our Students and Parents Say
           </h2>
@@ -55,9 +114,12 @@ export function Testimonials() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {testimonials.map((testimonial, index) => (
-            <Card key={index} className="bg-white hover:shadow-xl transition-all duration-300 border-2 hover:border-primary/20">
+        <div className="relative">
+          <div className="overflow-hidden" ref={emblaRef}>
+            <div className="flex -mx-4">
+              {testimonials.map((testimonial, index) => (
+                <div key={index} className="px-4 flex-[0_0_100%] md:flex-[0_0_calc(50%-1rem)] lg:flex-[0_0_calc(33.333%-1.5rem)] pb-1">
+                  <Card className="h-full bg-white hover:shadow-xl transition-all duration-300 border-2 hover:border-primary/20">
               <CardContent className="p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <Quote className="w-8 h-8 text-primary/20" />
@@ -83,12 +145,44 @@ export function Testimonials() {
                   <div>
                     <div className="font-medium text-primary text-sm">{testimonial.name}</div>
                     <div className="text-xs text-muted-foreground">{testimonial.role}</div>
-                    <div className="text-xs text-muted-foreground">{testimonial.location}</div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+                  </CardContent>
+                </Card>
+              </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Navigation Buttons */}
+          <button
+            onClick={scrollPrev}
+            className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-12 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors z-10"
+            aria-label="Previous testimonial"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <button
+            onClick={scrollNext}
+            className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-12 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors z-10"
+            aria-label="Next testimonial"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+          
+          {/* Dots */}
+          <div className="flex justify-center mt-8 space-x-2">
+            {scrollSnaps.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => scrollTo(index)}
+                className={`w-3 h-3 rounded-full transition-all ${
+                  index === selectedIndex ? 'bg-primary w-6' : 'bg-gray-300'
+                }`}
+                aria-label={`Go to testimonial ${index + 1}`}
+              />
+            ))}
+          </div>
         </div>
 
         <div className="text-center mt-12">
