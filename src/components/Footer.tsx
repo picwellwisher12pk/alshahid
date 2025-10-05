@@ -4,7 +4,7 @@ export function Footer() {
   const quickLinks = [
     { name: "Homepage", href: "#home" },
     { name: "Courses", href: "#courses" },
-    // { name: "Pricing", href: "#pricing" },
+    { name: "Login / Sign Up", href: "/login" },
     { name: "About Us", href: "#about" },
     { name: "Contact", href: "#contact" }
   ];
@@ -17,13 +17,14 @@ export function Footer() {
     { name: "Islamic Studies", href: "#" }
   ];
 
-  const resources = [
-    { name: "FAQ", href: "#" },
-    { name: "Testimonials", href: "#testimonials" },
-    { name: "Blog", href: "#" },
-    { name: "Privacy Policy", href: "#" },
-    { name: "Terms of Service", href: "#" }
-  ];
+  // Resources section commented out as per requirements
+  // const resources = [
+  //   { name: "FAQ", href: "#" },
+  //   { name: "Testimonials", href: "#testimonials" },
+  //   { name: "Blog", href: "#" },
+  //   { name: "Privacy Policy", href: "#" },
+  //   { name: "Terms of Service", href: "#" }
+  // ];
 
   return (
     <footer className="bg-primary text-white">
@@ -42,43 +43,16 @@ export function Footer() {
               Learn the beautiful recitation of the Quran with qualified teachers from the comfort of your home.
               Join our global community of learners.
             </p>
-
-            <div className="space-y-3">
-              <a 
-                href="https://wa.me/923004196274" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center space-x-3 hover:text-white transition-colors"
-              >
-                <Phone className="w-4 h-4 text-white/60" />
-                <span className="text-sm">+92 300 4196274</span>
-              </a>
-              <a 
-                href="https://wa.me/923104362226" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center space-x-3 hover:text-white transition-colors"
-              >
-                <Phone className="w-4 h-4 text-white/60" />
-                <span className="text-sm">+92 310 4362226</span>
-              </a>
-              <a 
-                href="mailto:shahidmajeed612@gmail.com" 
-                className="flex items-center space-x-3 hover:text-white transition-colors"
-              >
-                <Mail className="w-4 h-4 text-white/60" />
-                <span className="text-sm">shahidmajeed612@gmail.com</span>
-              </a>
-              <a 
-                href="mailto:infoalshahidinstitute@gmail.com" 
-                className="flex items-center space-x-3 hover:text-white transition-colors"
-              >
-                <Mail className="w-4 h-4 text-white/60 opacity-0" />
-                <span className="text-sm">infoalshahidinstitute@gmail.com</span>
-              </a>
-              <div className="flex items-center space-x-3">
-                <Clock className="w-4 h-4 text-white/60" />
-                <span className="text-sm">Available 24/7</span>
+            
+            <div className="pt-2">
+              <h4 className="text-sm mb-3">Follow Us</h4>
+              <div className="flex space-x-3">
+                <a href="#" className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
+                  <Facebook className="w-4 h-4" />
+                </a>
+                <a href="mailto:infoalshahidinstitute@gmail.com" className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
+                  <Mail className="w-4 h-4" />
+                </a>
               </div>
             </div>
           </div>
@@ -91,7 +65,7 @@ export function Footer() {
                 <li key={index}>
                   <a
                     href={link.href}
-                    className="text-white/80 hover:text-white transition-colors"
+                    className="text-white/80 hover:text-white transition-colors block"
                   >
                     {link.name}
                   </a>
@@ -117,31 +91,55 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Resources */}
+          {/* Contact Information */}
           <div className="space-y-6">
-            <h3 className="text-lg">Resources</h3>
-            <ul className="space-y-3">
-              {resources.map((resource, index) => (
-                <li key={index}>
-                  <a
-                    href={resource.href}
-                    className="text-white/80 hover:text-white transition-colors"
-                  >
-                    {resource.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
-
-            <div className="pt-4">
-              <h4 className="text-sm mb-3">Follow Us</h4>
-              <div className="flex space-x-3">
-                <a href="#" className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
-                  <Facebook className="w-4 h-4" />
+            <h3 className="text-lg">Contact Us</h3>
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-white/90">WhatsApp</h4>
+                <a 
+                  href="https://wa.me/923004196274" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-3 hover:text-white transition-colors text-sm text-white/80"
+                >
+                  <Phone className="w-4 h-4 flex-shrink-0" />
+                  <span>+92 300 4196274</span>
                 </a>
-                <a href="#" className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
-                  <Mail className="w-4 h-4" />
+                <a 
+                  href="https://wa.me/923104362226" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-3 hover:text-white transition-colors text-sm text-white/80"
+                >
+                  <Phone className="w-4 h-4 flex-shrink-0" />
+                  <span>+92 310 4362226</span>
                 </a>
+              </div>
+              
+              <div className="space-y-3 pt-2">
+                <h4 className="text-sm font-medium text-white/90">Email</h4>
+                <a 
+                  href="mailto:shahidmajeed612@gmail.com" 
+                  className="flex items-start space-x-3 hover:text-white transition-colors text-sm text-white/80"
+                >
+                  <Mail className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span>shahidmajeed612@gmail.com</span>
+                </a>
+                <a 
+                  href="mailto:infoalshahidinstitute@gmail.com" 
+                  className="flex items-start space-x-3 hover:text-white transition-colors text-sm text-white/80"
+                >
+                  <Mail className="w-4 h-4 flex-shrink-0 mt-0.5 opacity-0" />
+                  <span>infoalshahidinstitute@gmail.com</span>
+                </a>
+              </div>
+              
+              <div className="flex items-center space-x-3 pt-2">
+                <div className="w-4 h-4 flex-shrink-0">
+                  <Clock className="w-full h-full text-green-400" />
+                </div>
+                <span className="text-sm text-green-400">Available 24/7</span>
               </div>
             </div>
           </div>

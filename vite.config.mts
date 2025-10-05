@@ -7,10 +7,12 @@
 
 
   export default defineConfig({
-    plugins: [react(),tailwindcss(),],
+    plugins: [react(), tailwindcss()],
     resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
-
     },
     // build: {
     //   target: 'esnext',

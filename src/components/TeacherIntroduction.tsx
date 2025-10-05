@@ -32,7 +32,7 @@ export function TeacherIntroduction() {
 
           <div className="space-y-6">
             <div className="space-y-4">
-              <h3 className="text-2xl text-primary">Qaari Shahid Majeed</h3>
+              <h3 className="text-2xl text-primary">Qari Shahid Majeed</h3>
               <div className="flex items-center space-x-1 justify-center lg:justify-start">
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
@@ -42,7 +42,7 @@ export function TeacherIntroduction() {
             </div>
 
             <blockquote className="text-lg leading-relaxed text-muted-foreground italic border-l-4 border-primary pl-6">
-              "Assalam-o-Alaikum! I'm Qaari Shahid Majeed. For over 30 years, I've had the honor of teaching the Quran to students around the world.
+              "Assalam-o-Alaikum! I'm Qari Shahid Majeed. For over 30 years, I've had the honor of teaching the Quran to students around the world.
               My passion is to help every student connect with the divine words of Allah (SWT) and build a lifelong love for learning the Quran with proper Tajweed.
               I look forward to meeting you in class, Insha'Allah."
             </blockquote>
