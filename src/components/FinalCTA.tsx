@@ -1,8 +1,10 @@
 import { Button } from "./ui/button";
 import { Calendar, Gift, Clock, CheckCircle } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { useTrialRequest } from "@/contexts/trial-request-context";
 
 export function FinalCTA() {
+  const { openDialog } = useTrialRequest();
   const benefits = [
     "No commitment required",
     "Meet your qualified teacher",
@@ -60,6 +62,7 @@ export function FinalCTA() {
                 <Button
                   size="lg"
                   className="w-full bg-white text-primary hover:bg-white/90 transition-colors text-lg py-6"
+                  onClick={() => openDialog()}
                 >
                   <Calendar className="w-5 h-5 mr-2" />
                   Start Your Free Trial today!

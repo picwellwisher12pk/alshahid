@@ -1,8 +1,10 @@
 import { Button } from "./ui/button";
 import { Phone, Mail } from "lucide-react";
 import { Link, NavLink } from "react-router-dom";
+import { useTrialRequest } from "@/contexts/trial-request-context";
 
 export function Header() {
+  const { openDialog } = useTrialRequest();
   return (
     <header className="bg-white border-b border-border sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4">
@@ -46,7 +48,7 @@ export function Header() {
                 <span>infoalshahidinstitute@gmail.com</span>
               </a>
             </div>
-            <Button>Book Free Trial</Button>
+            <Button onClick={() => openDialog()}>Book Free Trial</Button>
           </div>
         </div>
       </div>
