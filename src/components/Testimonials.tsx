@@ -1,3 +1,5 @@
+"use client";
+
 import { Card, CardContent } from "./ui/card";
 import { Star, Quote, ChevronLeft, ChevronRight } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";

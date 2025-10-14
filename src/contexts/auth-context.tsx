@@ -1,5 +1,6 @@
+"use client";
+
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
 
 interface User {
   id: string;
@@ -99,18 +100,5 @@ export const useAuth = () => {
   return context;
 };
 
-// Protected Route Component
-export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
-  const { isAuthenticated, isLoading, user } = useAuth();
-  
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-  
-  if (!isAuthenticated || !user) {
-    // This will be caught by the router and redirected to /login
-    return <Navigate to="/login" replace />;
-  }
-  
-  return <>{children}</>;
-};
+// Protected Route Component - Not needed in Next.js App Router
+// Use middleware or layout components for protection instead

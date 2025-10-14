@@ -1,14 +1,14 @@
+"use client";
+
 import { Button } from "./ui/button";
-import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { BookOpen, Heart, Volume2, Clock, Users, Star } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 
 export function CoursesOverview() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const courses = [
     {
       title: "Quran & Tajweed for Beginners",
@@ -141,8 +141,8 @@ export function CoursesOverview() {
         </div>
 
         <div className="text-center mt-12">
-          <Button 
-            onClick={() => navigate('/courses')}
+          <Button
+            onClick={() => router.push('/courses')}
             variant="outline"
             size="lg"
             className="px-8 py-6 text-lg hover:bg-primary/10 transition-colors"

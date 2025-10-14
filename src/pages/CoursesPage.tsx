@@ -1,8 +1,10 @@
+"use client";
+
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { BookOpen, Heart, Volume2, Clock, Users, Star, Book, BookMarked, BookText, BookKey, BookA } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 
 const courses = [
     {
@@ -122,7 +124,7 @@ const getBadgeClasses = (color: string) => {
 };
 
 export function CoursesPage() {
-    const navigate = useNavigate();
+    const router = useRouter();
 
     return (
         <div className="min-h-screen bg-background pt-6">
@@ -197,7 +199,7 @@ export function CoursesPage() {
                     <div className="mt-16 text-center">
                         <h3 className="text-2xl font-semibold mb-4">Can't find what you're looking for?</h3>
                         <p className="text-muted-foreground mb-6">Contact us for custom learning plans or group discounts.</p>
-                        <Button onClick={() => navigate('/#contact')}>
+                        <Button onClick={() => router.push('/#contact')}>
                             Contact Us
                         </Button>
                     </div>

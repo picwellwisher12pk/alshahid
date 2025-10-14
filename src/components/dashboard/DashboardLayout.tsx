@@ -1,4 +1,7 @@
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+"use client";
+
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { LogOut, MessageSquare, UserPlus, Home, Menu, X } from 'lucide-react';
@@ -10,15 +13,15 @@ const navigation = [
   { name: 'Contact Messages', href: '/dashboard/contact-messages', icon: MessageSquare },
 ];
 
-export function DashboardLayout() {
+export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { logout } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    router.push('/login');
   };
 
   return (
@@ -40,9 +43,9 @@ export function DashboardLayout() {
               {navigation.map((item) => (
                 <Link
                   key={item.name}
-                  to={item.href}
+                  href={item.href}
                   className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                    location.pathname === item.href
+                    pathname === item.href
                       ? 'bg-gray-100 text-gray-900'
                       : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                   }`}
@@ -50,7 +53,7 @@ export function DashboardLayout() {
                 >
                   <item.icon
                     className={`mr-3 h-5 w-5 ${
-                      location.pathname === item.href ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-500'
+                      pathname === item.href ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-500'
                     }`}
                     aria-hidden="true"
                   />
@@ -80,16 +83,16 @@ export function DashboardLayout() {
               {navigation.map((item) => (
                 <Link
                   key={item.name}
-                  to={item.href}
+                  href={item.href}
                   className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                    location.pathname === item.href
+                    pathname === item.href
                       ? 'bg-gray-100 text-gray-900'
                       : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
                   <item.icon
                     className={`mr-3 h-5 w-5 ${
-                      location.pathname === item.href ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-500'
+                      pathname === item.href ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-500'
                     }`}
                     aria-hidden="true"
                   />
@@ -120,7 +123,7 @@ export function DashboardLayout() {
       <div className="lg:pl-64 flex flex-col flex-1">
         <main className="flex-1 pb-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <Outlet />
+            {children}
           </div>
         </main>
       </div>

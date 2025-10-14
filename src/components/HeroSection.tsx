@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "./ui/button";
 import { Play, Calendar, Users, Clock, Info } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
