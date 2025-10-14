@@ -10,19 +10,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User model for authentication
+// User model for authentication (supports admin, teacher, and student logins)
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
-  name          String?
+  fullName      String?   @map("full_name")
   password      String    // Hashed password
-  role          UserRole  @default(ADMIN)
+  role          UserRole  @default(STUDENT)
   emailVerified Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   // Relations
-  sessions      Session[]
+  sessions                Session[]
+  teacherProfile          Teacher?
+  studentProfile          Student?
+  verifiedPaymentReceipts PaymentReceipt[] @relation("VerifiedBy")
 
   @@map("users")
 }
@@ -47,16 +50,16 @@ model Session {
   @@map("sessions")
 }
 
-// Trial Request model
+// Trial Request model - from public website form
 model TrialRequest {
   id              String              @id @default(cuid())
-  parentName      String
-  studentName     String
-  email           String
-  phone           String
-  course          String
-  preferredTime   String?
-  additionalNotes String?
+  requesterName   String              @map("requester_name") // Parent/Guardian name
+  studentName     String              @map("student_name")
+  studentAge      Int?                @map("student_age")
+  contactEmail    String              @map("contact_email")
+  contactPhone    String?             @map("contact_phone")
+  preferredTime   String?             @map("preferred_time")
+  additionalNotes String?             @map("additional_notes")
   status          TrialRequestStatus  @default(PENDING)
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
@@ -66,22 +69,22 @@ model TrialRequest {
 
 enum TrialRequestStatus {
   PENDING
-  CONTACTED
   SCHEDULED
   COMPLETED
+  CONVERTED // When converted to actual student
   CANCELLED
 }
 
 // Contact Message model
 model ContactMessage {
-  id        String              @id @default(cuid())
+  id        String                @id @default(cuid())
   name      String
   email     String
   subject   String?
   message   String
-  status    ContactMessageStatus @default(UNREAD)
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
+  status    ContactMessageStatus  @default(UNREAD)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
 
   @@map("contact_messages")
 }
@@ -91,4 +94,149 @@ enum ContactMessageStatus {
   READ
   REPLIED
   ARCHIVED
+}
+
+// Teacher profile - extends User with role=TEACHER
+model Teacher {
+  id                String    @id @default(cuid())
+  userId            String    @unique @map("user_id")
+  bio               String?
+  profilePictureUrl String?   @map("profile_picture_url")
+  isActive          Boolean   @default(true) @map("is_active")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  students     Student[]
+  classes      Class[]
+  progressLogs ProgressLog[]
+  invoices     Invoice[]
+
+  @@map("teachers")
+}
+
+// Student profile - can be linked to User account or standalone
+model Student {
+  id            String        @id @default(cuid())
+  userId        String?       @unique @map("user_id") // Optional link to login account
+  teacherId     String?       @map("teacher_id") // Assigned teacher
+  fullName      String        @map("full_name")
+  age           Int?
+  contactPhone  String?       @map("contact_phone")
+  contactEmail  String?       @map("contact_email")
+  status        StudentStatus @default(ACTIVE)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  user         User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  teacher      Teacher?       @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  classes      Class[]
+  progressLogs ProgressLog[]
+  invoices     Invoice[]
+
+  @@map("students")
+}
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+  TRIAL
+}
+
+// Class scheduling
+model Class {
+  id              String      @id @default(cuid())
+  studentId       String      @map("student_id")
+  teacherId       String      @map("teacher_id")
+  classTime       DateTime    @map("class_time")
+  durationMinutes Int         @default(30) @map("duration_minutes")
+  status          ClassStatus @default(SCHEDULED)
+  notes           String?
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@map("classes")
+}
+
+enum ClassStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+// Progress logs by teachers
+model ProgressLog {
+  id        String   @id @default(cuid())
+  studentId String   @map("student_id")
+  teacherId String   @map("teacher_id")
+  logDate   DateTime @default(now()) @map("log_date") @db.Date
+  title     String
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@map("progress_logs")
+}
+
+// Invoice management
+model Invoice {
+  id        String        @id @default(cuid())
+  studentId String        @map("student_id")
+  teacherId String?       @map("teacher_id")
+  amount    Decimal       @db.Decimal(10, 2)
+  dueDate   DateTime      @map("due_date") @db.Date
+  issueDate DateTime      @default(now()) @map("issue_date") @db.Date
+  status    InvoiceStatus @default(UNPAID)
+  month     String? // e.g., "January 2025" for tracking
+  notes     String?
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  student         Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher         Teacher?         @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  paymentReceipts PaymentReceipt[]
+
+  @@map("invoices")
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PAID
+  OVERDUE
+  PENDING_VERIFICATION
+  CANCELLED
+}
+
+// Payment receipt uploads
+model PaymentReceipt {
+  id                 String                    @id @default(cuid())
+  invoiceId          String                    @map("invoice_id")
+  fileUrl            String                    @map("file_url") // Supabase Storage URL
+  uploadedAt         DateTime                  @default(now()) @map("uploaded_at")
+  verificationStatus PaymentVerificationStatus @default(PENDING) @map("verification_status")
+  verifiedByUserId   String?                   @map("verified_by_user_id")
+  verifiedAt         DateTime?                 @map("verified_at")
+  rejectionReason    String?                   @map("rejection_reason")
+
+  // Relations
+  invoice    Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  verifiedBy User?   @relation("VerifiedBy", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+
+  @@map("payment_receipts")
+}
+
+enum PaymentVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
