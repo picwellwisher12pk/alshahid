@@ -25,47 +25,56 @@ const courses = [
 
 export function TrialRequestDialog({ open, onOpenChange, selectedCourse }: TrialRequestDialogProps) {
   const [formData, setFormData] = useState({
-    name: '',
+    parentName: '',
+    studentName: '',
     email: '',
     phone: '',
     course: selectedCourse || '',
-    message: '',
+    preferredTime: '',
+    additionalNotes: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError('');
 
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/trial-requests', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(formData),
-      // });
+      const response = await fetch('/api/trial-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to submit trial request');
+      }
 
-      console.log('Trial request submitted:', formData);
+      const data = await response.json();
+      console.log('Trial request submitted successfully:', data);
       setIsSuccess(true);
 
-      // Reset form after 2 seconds and close dialog
+      // Reset form after 3 seconds and close dialog
       setTimeout(() => {
         setFormData({
-          name: '',
+          parentName: '',
+          studentName: '',
           email: '',
           phone: '',
           course: '',
-          message: '',
+          preferredTime: '',
+          additionalNotes: '',
         });
         setIsSuccess(false);
         onOpenChange(false);
-      }, 2000);
+      }, 3000);
     } catch (error) {
       console.error('Error submitting trial request:', error);
+      setError(error instanceof Error ? error.message : 'Failed to submit request. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -87,39 +96,60 @@ export function TrialRequestDialog({ open, onOpenChange, selectedCourse }: Trial
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name *</Label>
-                <Input
-                  id="name"
-                  placeholder="Enter your full name"
-                  value={formData.name}
-                  onChange={(e) => handleChange('name', e.target.value)}
-                  required
-                />
+              {error && (
+                <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
+                  {error}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="parentName">Parent/Guardian Name *</Label>
+                  <Input
+                    id="parentName"
+                    placeholder="Enter parent's full name"
+                    value={formData.parentName}
+                    onChange={(e) => handleChange('parentName', e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="studentName">Student Name *</Label>
+                  <Input
+                    id="studentName"
+                    placeholder="Enter student's full name"
+                    value={formData.studentName}
+                    onChange={(e) => handleChange('studentName', e.target.value)}
+                    required
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your.email@example.com"
-                  value={formData.email}
-                  onChange={(e) => handleChange('email', e.target.value)}
-                  required
-                />
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="your.email@example.com"
+                    value={formData.email}
+                    onChange={(e) => handleChange('email', e.target.value)}
+                    required
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number *</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+1 (555) 000-0000"
-                  value={formData.phone}
-                  onChange={(e) => handleChange('phone', e.target.value)}
-                  required
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number *</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="+1 (555) 000-0000"
+                    value={formData.phone}
+                    onChange={(e) => handleChange('phone', e.target.value)}
+                    required
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -143,12 +173,22 @@ export function TrialRequestDialog({ open, onOpenChange, selectedCourse }: Trial
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="message">Additional Message (Optional)</Label>
+                <Label htmlFor="preferredTime">Preferred Time (Optional)</Label>
+                <Input
+                  id="preferredTime"
+                  placeholder="e.g., Weekday evenings, Weekend mornings"
+                  value={formData.preferredTime}
+                  onChange={(e) => handleChange('preferredTime', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="additionalNotes">Additional Notes (Optional)</Label>
                 <Textarea
-                  id="message"
-                  placeholder="Tell us about your learning goals or any specific requirements..."
-                  value={formData.message}
-                  onChange={(e) => handleChange('message', e.target.value)}
+                  id="additionalNotes"
+                  placeholder="Tell us about the student's level, learning goals, or any specific requirements..."
+                  value={formData.additionalNotes}
+                  onChange={(e) => handleChange('additionalNotes', e.target.value)}
                   rows={3}
                 />
               </div>

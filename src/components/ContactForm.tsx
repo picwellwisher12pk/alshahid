@@ -12,29 +12,32 @@ export function ContactForm() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: '',
     subject: '',
     message: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError('');
 
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/contact', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(formData),
-      // });
+      const response = await fetch('/api/contact-messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send message');
+      }
 
-      console.log('Contact form submitted:', formData);
+      const data = await response.json();
+      console.log('Contact message submitted successfully:', data);
       setIsSuccess(true);
 
       // Reset form after 3 seconds
@@ -42,7 +45,6 @@ export function ContactForm() {
         setFormData({
           name: '',
           email: '',
-          phone: '',
           subject: '',
           message: '',
         });
@@ -50,6 +52,7 @@ export function ContactForm() {
       }, 3000);
     } catch (error) {
       console.error('Error submitting contact form:', error);
+      setError(error instanceof Error ? error.message : 'Failed to send message. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -144,6 +147,12 @@ export function ContactForm() {
                 <CardContent>
                   {!isSuccess ? (
                     <form onSubmit={handleSubmit} className="space-y-4">
+                      {error && (
+                        <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
+                          {error}
+                        </div>
+                      )}
+
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="contact-name">Full Name *</Label>
@@ -169,28 +178,14 @@ export function ContactForm() {
                         </div>
                       </div>
 
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="contact-phone">Phone Number</Label>
-                          <Input
-                            id="contact-phone"
-                            type="tel"
-                            placeholder="+1 (555) 000-0000"
-                            value={formData.phone}
-                            onChange={(e) => handleChange('phone', e.target.value)}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="contact-subject">Subject *</Label>
-                          <Input
-                            id="contact-subject"
-                            placeholder="How can we help?"
-                            value={formData.subject}
-                            onChange={(e) => handleChange('subject', e.target.value)}
-                            required
-                          />
-                        </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="contact-subject">Subject</Label>
+                        <Input
+                          id="contact-subject"
+                          placeholder="How can we help?"
+                          value={formData.subject}
+                          onChange={(e) => handleChange('subject', e.target.value)}
+                        />
                       </div>
 
                       <div className="space-y-2">
