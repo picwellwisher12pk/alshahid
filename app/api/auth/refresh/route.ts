@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { prisma } from '@/src/lib/prisma';
-import { verifyToken, generateAccessToken } from '@/src/lib/jwt';
+import { prisma } from '@/lib/prisma';
+import { verifyToken, generateAccessToken } from '@/lib/jwt';
 
 export async function POST(request: NextRequest) {
   try {

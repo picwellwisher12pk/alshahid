@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/src/lib/prisma';
-import { requireRole } from '@/src/lib/rbac';
+import { prisma } from '@/lib/prisma';
+import { requireRole } from '@/lib/rbac';
 
 const updateTeacherSchema = z.object({
   fullName: z.string().min(2).optional(),

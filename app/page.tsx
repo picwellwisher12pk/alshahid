@@ -1,12 +1,12 @@
-import { Header } from "@/src/components/Header";
-import { HeroSection } from "@/src/components/HeroSection";
-import { ValueProposition } from "@/src/components/ValueProposition";
-import { TeacherIntroduction } from "@/src/components/TeacherIntroduction";
-import { CoursesOverview } from "@/src/components/CoursesOverview";
-import { Testimonials } from "@/src/components/Testimonials";
-import { FinalCTA } from "@/src/components/FinalCTA";
-import { ContactForm } from "@/src/components/ContactForm";
-import { Footer } from "@/src/components/Footer";
+import { Header } from "@/components/Header";
+import { HeroSection } from "@/components/HeroSection";
+import { ValueProposition } from "@/components/ValueProposition";
+import { TeacherIntroduction } from "@/components/TeacherIntroduction";
+import { CoursesOverview } from "@/components/CoursesOverview";
+import { Testimonials } from "@/components/Testimonials";
+import { FinalCTA } from "@/components/FinalCTA";
+import { ContactForm } from "@/components/ContactForm";
+import { Footer } from "@/components/Footer";
 
 export default function Home() {
   return (

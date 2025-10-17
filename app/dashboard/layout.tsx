@@ -1,7 +1,7 @@
 "use client";
 
-import { DashboardLayout } from "@/src/components/dashboard/DashboardLayout";
-import { useAuth } from "@/src/contexts/auth-context";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 

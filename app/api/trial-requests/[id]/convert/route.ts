@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/src/lib/prisma';
-import { hashPassword } from '@/src/lib/auth';
-import { requireRole } from '@/src/lib/rbac';
+import { prisma } from '@/lib/prisma';
+import { hashPassword } from '@/lib/auth';
+import { requireRole } from '@/lib/rbac';
 
 const convertTrialSchema = z.object({
   teacherId: z.string(),

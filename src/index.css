@@ -166,9 +166,7 @@
   }
 }
 
-@layer base {
-
-  *,
+*,
   :after,
   :before,
   ::backdrop {
@@ -505,10 +503,8 @@
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
   }
-}
 
-@layer utilities {
-  .\@container\/card-header {
+.\@container\/card-header {
     container: card-header / inline-size;
   }
 
@@ -4815,7 +4811,6 @@
       color: var(--accent-foreground);
     }
   }
-}
 
 :root {
   --font-size: 16px;

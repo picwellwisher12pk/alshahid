@@ -4,20 +4,74 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
-import { LogOut, MessageSquare, UserPlus, Home, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import {
+  LogOut,
+  MessageSquare,
+  UserPlus,
+  Home,
+  Menu,
+  X,
+  Users,
+  GraduationCap,
+  Calendar,
+  FileText,
+  DollarSign,
+  CheckCircle,
+  BookOpen,
+  LayoutDashboard
+} from 'lucide-react';
+import { useState, useMemo } from 'react';
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home },
+// Role-based navigation configurations
+const adminNavigation = [
+  { name: 'Overview', href: '/dashboard', icon: Home },
+  { name: 'Teachers', href: '/dashboard/teachers', icon: GraduationCap },
+  { name: 'All Students', href: '/dashboard/all-students', icon: Users },
   { name: 'Trial Requests', href: '/dashboard/trial-requests', icon: UserPlus },
   { name: 'Contact Messages', href: '/dashboard/contact-messages', icon: MessageSquare },
+  { name: 'Invoices', href: '/dashboard/invoices', icon: DollarSign },
+  { name: 'Payment Verification', href: '/dashboard/payment-verification', icon: CheckCircle },
+];
+
+const teacherNavigation = [
+  { name: 'Dashboard', href: '/dashboard', icon: Home },
+  { name: 'My Students', href: '/dashboard/my-students', icon: Users },
+  { name: 'Classes', href: '/dashboard/classes', icon: Calendar },
+  { name: 'Progress Logs', href: '/dashboard/progress-logs', icon: BookOpen },
+];
+
+const studentNavigation = [
+  { name: 'Dashboard', href: '/portal', icon: Home },
+  { name: 'My Schedule', href: '/portal/schedule', icon: Calendar },
+  { name: 'My Progress', href: '/portal/progress', icon: BookOpen },
+  { name: 'Invoices', href: '/portal/invoices', icon: DollarSign },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Determine navigation based on user role
+  const navigation = useMemo(() => {
+    if (!user) return [];
+    const role = user.role?.toUpperCase();
+    if (role === 'ADMIN') return adminNavigation;
+    if (role === 'TEACHER') return teacherNavigation;
+    if (role === 'STUDENT') return studentNavigation;
+    return [];
+  }, [user]);
+
+  // Determine dashboard title based on role
+  const dashboardTitle = useMemo(() => {
+    if (!user) return 'Dashboard';
+    const role = user.role?.toUpperCase();
+    if (role === 'ADMIN') return 'Admin Dashboard';
+    if (role === 'TEACHER') return 'Teacher Dashboard';
+    if (role === 'STUDENT') return 'Student Portal';
+    return 'Dashboard';
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -29,7 +83,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile menu */}
       <div className="lg:hidden">
         <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200">
-          <h1 className="text-xl font-semibold">Admin Dashboard</h1>
+          <h1 className="text-xl font-semibold">{dashboardTitle}</h1>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 rounded-md text-gray-500 hover:bg-gray-100 focus:outline-none"
@@ -77,7 +131,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col w-64 border-r border-gray-200 bg-white">
           <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
             <div className="flex items-center flex-shrink-0 px-4">
-              <h1 className="text-xl font-semibold">Admin Dashboard</h1>
+              <h1 className="text-xl font-semibold">{dashboardTitle}</h1>
             </div>
             <nav className="mt-5 flex-1 px-2 space-y-1 bg-white">
               {navigation.map((item) => (
