@@ -103,7 +103,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`group flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors ${
+                  className={`group flex items-center gap-3 px-3 py-3 text-sm font-medium rounded-md transition-colors ${
                     pathname === item.href
                       ? 'bg-gray-100 text-gray-900'
                       : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
@@ -127,65 +127,68 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Header with user info */}
         <header className="bg-white border-b border-gray-200 z-10">
-          <div className="px-4 sm:px-6 lg:px-8 py-4">
+          <div className="px-4 sm:px-6 lg:px-8 py-2">
             <div className="flex items-center justify-between">
               {/* Mobile menu button */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="lg:hidden p-2 rounded-md text-gray-500 hover:bg-gray-100 focus:outline-none"
               >
-                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </button>
 
               {/* Spacer for desktop */}
               <div className="hidden lg:block flex-1"></div>
 
-              {/* User dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center space-x-3 focus:outline-none">
-                  <div className="flex items-center space-x-3 hover:bg-gray-50 rounded-lg px-3 py-2 transition-colors">
-                    <div className="hidden sm:block text-right">
-                      <p className="text-sm font-medium text-gray-900">
-                        {user?.fullName || user?.email || 'User'}
-                      </p>
-                      <p className="text-xs text-gray-500 capitalize">
-                        {user?.role?.toLowerCase() || 'Guest'}
-                      </p>
+              {/* User dropdown - aligned right */}
+              <div className="ml-auto">
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center focus:outline-none">
+                    <div className="flex items-center gap-3 hover:bg-gray-50 rounded-lg px-3 py-1.5 transition-colors">
+                      <div className="hidden sm:flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-900">
+                          {user?.fullName || user?.email || 'User'}
+                        </span>
+                        <span className="text-xs text-gray-500">•</span>
+                        <span className="text-xs text-gray-500 capitalize">
+                          {user?.role?.toLowerCase() || 'Guest'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-center w-10 h-10 bg-primary text-white rounded-full">
+                        <User className="h-5 w-5" />
+                      </div>
+                      <ChevronDown className="h-4 w-4 text-gray-500" />
                     </div>
-                    <div className="flex items-center justify-center w-10 h-10 bg-primary text-white rounded-full">
-                      <User className="h-5 w-5" />
-                    </div>
-                    <ChevronDown className="h-4 w-4 text-gray-500" />
-                  </div>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium">
-                        {user?.fullName || user?.email || 'User'}
-                      </p>
-                      <p className="text-xs text-gray-500">{user?.email}</p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="cursor-pointer">
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer">
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Logout</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium">
+                          {user?.fullName || user?.email || 'User'}
+                        </p>
+                        <p className="text-xs text-gray-500">{user?.email}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="cursor-pointer">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Logout</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
         </header>
@@ -198,7 +201,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`group flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-colors ${
+                  className={`group flex items-center gap-3 px-3 py-3 text-sm font-medium rounded-md transition-colors ${
                     pathname === item.href
                       ? 'bg-gray-100 text-gray-900'
                       : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
