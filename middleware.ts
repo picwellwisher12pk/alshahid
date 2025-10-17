@@ -1,10 +1,33 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyToken } from '@/src/lib/jwt';
+import { verifyToken } from '@/lib/jwt';
 
-// Define protected routes
+// Define protected routes and their required roles
 const protectedRoutes = ['/dashboard'];
 const authRoutes = ['/login'];
+
+// Role-based route access control
+const roleBasedRoutes = {
+  admin: [
+    '/dashboard/teachers',
+    '/dashboard/all-students',
+    '/dashboard/trial-requests',
+    '/dashboard/payment-verification',
+    '/dashboard/invoices',
+  ],
+  teacher: [
+    '/dashboard/my-students',
+    '/dashboard/classes',
+    '/dashboard/progress-logs',
+    '/dashboard/teacher',
+  ],
+  student: [
+    '/portal/schedule',
+    '/portal/progress',
+    '/portal/invoices',
+    '/portal/profile',
+  ],
+};
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -16,9 +39,11 @@ export async function middleware(request: NextRequest) {
   // Check if route is protected
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
+  const isRoleBasedRoute =
+    Object.values(roleBasedRoutes).flat().some(route => pathname.startsWith(route));
 
-  // If accessing protected route
-  if (isProtectedRoute) {
+  // If accessing protected route or role-based route
+  if (isProtectedRoute || isRoleBasedRoute) {
     // No access token, redirect to login
     if (!accessToken) {
       const url = new URL('/login', request.url);
@@ -36,7 +61,36 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
-    // Token valid, allow access
+    // Check role-based access
+    if (isRoleBasedRoute && payload.role) {
+      const userRole = payload.role.toLowerCase();
+      let hasAccess = false;
+
+      // Check if user's role has access to this route
+      if (userRole === 'admin') {
+        // Admin has access to all routes
+        hasAccess = true;
+      } else if (userRole === 'teacher') {
+        hasAccess = roleBasedRoutes.teacher.some(route => pathname.startsWith(route));
+      } else if (userRole === 'student') {
+        hasAccess = roleBasedRoutes.student.some(route => pathname.startsWith(route));
+      }
+
+      if (!hasAccess) {
+        // Redirect to appropriate dashboard based on role
+        let redirectPath = '/dashboard';
+        if (userRole === 'admin') {
+          redirectPath = '/dashboard/teachers';
+        } else if (userRole === 'teacher') {
+          redirectPath = '/dashboard/my-students';
+        } else if (userRole === 'student') {
+          redirectPath = '/portal/schedule';
+        }
+        return NextResponse.redirect(new URL(redirectPath, request.url));
+      }
+    }
+
+    // Token valid and has access, allow access
     return NextResponse.next();
   }
 
@@ -44,8 +98,19 @@ export async function middleware(request: NextRequest) {
   if (isAuthRoute && accessToken) {
     const payload = await verifyToken(accessToken);
     if (payload) {
-      // Already logged in, redirect to dashboard
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      // Already logged in, redirect to appropriate dashboard based on role
+      let redirectPath = '/dashboard';
+      if (payload.role) {
+        const userRole = payload.role.toLowerCase();
+        if (userRole === 'admin') {
+          redirectPath = '/dashboard/teachers';
+        } else if (userRole === 'teacher') {
+          redirectPath = '/dashboard/my-students';
+        } else if (userRole === 'student') {
+          redirectPath = '/portal/schedule';
+        }
+      }
+      return NextResponse.redirect(new URL(redirectPath, request.url));
     }
   }
 
