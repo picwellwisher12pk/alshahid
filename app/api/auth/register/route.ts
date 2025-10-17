@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/src/lib/prisma';
-import { hashPassword, validateEmail } from '@/src/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { hashPassword, validateEmail } from '@/lib/auth';
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  name: z.string().optional(),
+  fullName: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password, name } = validation.data;
+    const { email, password, fullName } = validation.data;
 
     // Check if email is valid
     if (!validateEmail(email)) {
@@ -52,13 +52,13 @@ export async function POST(request: NextRequest) {
       data: {
         email,
         password: hashedPassword,
-        name,
+        fullName,
         role: 'ADMIN', // You can modify this based on your needs
       },
       select: {
         id: true,
         email: true,
-        name: true,
+        fullName: true,
         role: true,
         createdAt: true,
       },

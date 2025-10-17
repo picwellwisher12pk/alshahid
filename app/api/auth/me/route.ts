@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { prisma } from '@/src/lib/prisma';
-import { verifyToken } from '@/src/lib/jwt';
+import { prisma } from '@/lib/prisma';
+import { verifyToken } from '@/lib/jwt';
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         email: true,
-        name: true,
+        fullName: true,
         role: true,
         emailVerified: true,
         createdAt: true,
