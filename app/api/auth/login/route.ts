@@ -46,6 +46,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if user must reset password
+    if (user.mustResetPassword) {
+      return NextResponse.json(
+        {
+          error: 'Password reset required',
+          mustResetPassword: true,
+          message: 'You must reset your password before logging in. Please check your email for instructions.',
+        },
+        { status: 403 }
+      );
+    }
+
     // Generate tokens
     const accessToken = await generateAccessToken({
       userId: user.id,

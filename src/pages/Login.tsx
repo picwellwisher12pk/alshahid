@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,8 +25,13 @@ export function Login() {
     try {
       await login({ email, password });
       router.push('/dashboard');
-    } catch (err) {
-      setError('Invalid email or password');
+    } catch (err: any) {
+      // Check if password reset is required
+      if (err?.response?.data?.mustResetPassword) {
+        setError(err.response.data.message || 'You must reset your password before logging in.');
+      } else {
+        setError('Invalid email or password');
+      }
       console.error('Login error:', err);
     } finally {
       setIsLoading(false);
@@ -62,6 +68,12 @@ export function Login() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-emerald-600 hover:text-emerald-500"
+                >
+                  Forgot password?
+                </Link>
               </div>
               <Input
                 id="password"
