@@ -3,7 +3,7 @@
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { BookOpen, Heart, Volume2, Clock, Users, Star } from "lucide-react";
+import { BookOpen, Heart, Volume2, Clock, Star } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useRouter } from 'next/navigation';
 
@@ -109,15 +109,9 @@ export function CoursesOverview() {
               </CardHeader>
 
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-4 h-4 text-muted-foreground" />
-                    <span>{course.duration}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Users className="w-4 h-4 text-muted-foreground" />
-                    <span>{course.students} students</span>
-                  </div>
+                <div className="flex items-center space-x-2 text-sm">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <span>{course.duration}</span>
                 </div>
 
                 <div className="space-y-2">
