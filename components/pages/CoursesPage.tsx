@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Heart, Volume2, Clock, Users, Star, Book, BookMarked, BookText, BookKey, BookA } from "lucide-react";
+import { BookOpen, Heart, Volume2, Clock, Star, Book, BookMarked, BookText, BookKey, BookA } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const courses = [
@@ -167,15 +167,9 @@ export function CoursesPage() {
 
                                 <CardContent className="mt-auto">
                                     <div className="space-y-4">
-                                        <div className="flex items-center justify-between text-sm text-muted-foreground">
-                                            <div className="flex items-center space-x-2">
-                                                <Clock className="w-4 h-4" />
-                                                <span>{course.duration}</span>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <Users className="w-4 h-4" />
-                                                <span>{course.students} students</span>
-                                            </div>
+                                        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                                            <Clock className="w-4 h-4" />
+                                            <span>{course.duration}</span>
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-2">
