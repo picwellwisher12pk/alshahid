@@ -5,7 +5,7 @@ import { verifyToken } from '@/lib/jwt';
 import { cookies } from 'next/headers';
 
 const updateTrialRequestSchema = z.object({
-  status: z.enum(['PENDING', 'CONTACTED', 'SCHEDULED', 'COMPLETED', 'CANCELLED']).optional(),
+  status: z.enum(['PENDING', 'SCHEDULED', 'COMPLETED', 'CONVERTED', 'CANCELLED']).optional(),
 });
 
 // Authentication helper

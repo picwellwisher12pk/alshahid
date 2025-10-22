@@ -13,11 +13,11 @@ const updateProgressLogSchema = z.object({
 // GET /api/progress-logs/[id] - Get single progress log
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole(request, ['ADMIN', 'TEACHER', 'STUDENT']);
-    const logId = params.id;
+    const { id: logId } = await params;
 
     const progressLog = await prisma.progressLog.findUnique({
       where: { id: logId },
@@ -86,11 +86,11 @@ export async function GET(
 // PATCH /api/progress-logs/[id] - Update progress log (Teacher only)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole(request, ['TEACHER']);
-    const logId = params.id;
+    const { id: logId } = await params;
     const body = await request.json();
 
     // Validate request body
@@ -184,11 +184,11 @@ export async function PATCH(
 // DELETE /api/progress-logs/[id] - Delete progress log (Teacher only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole(request, ['TEACHER']);
-    const logId = params.id;
+    const { id: logId } = await params;
 
     // Get teacher ID
     const teacherId = await getTeacherId(user.id);

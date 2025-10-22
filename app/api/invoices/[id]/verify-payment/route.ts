@@ -15,11 +15,11 @@ const verifyPaymentSchema = z.object({
 // POST /api/invoices/[id]/verify-payment - Verify payment receipt (Admin only)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole(request, ['ADMIN']);
-    const invoiceId = params.id;
+    const { id: invoiceId } = await params;
     const body = await request.json();
 
     // Validate request body
@@ -91,7 +91,7 @@ export async function POST(
         where: { id: validatedData.receiptId },
         data: {
           verificationStatus: validatedData.action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
-          verifiedBy: user.id,
+          verifiedByUserId: user.id,
           verifiedAt: new Date(),
           ...(validatedData.rejectionReason && {
             rejectionReason: validatedData.rejectionReason,
@@ -100,7 +100,7 @@ export async function POST(
       });
 
       // Update invoice status based on action
-      let newInvoiceStatus: 'PAID' | 'UNPAID';
+      let newInvoiceStatus: 'PAID' | 'UNPAID' |'OVERDUE';
       if (validatedData.action === 'APPROVE') {
         newInvoiceStatus = 'PAID';
       } else {
@@ -162,11 +162,11 @@ export async function POST(
 // GET /api/invoices/[id]/verify-payment - Get verification history for an invoice (Admin only)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole(request, ['ADMIN']);
-    const invoiceId = params.id;
+    const { id: invoiceId } = await params;
 
     // Verify invoice exists
     const invoice = await prisma.invoice.findUnique({

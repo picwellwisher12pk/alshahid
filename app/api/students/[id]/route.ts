@@ -16,11 +16,11 @@ const updateStudentSchema = z.object({
 // GET /api/students/[id] - Get single student details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole(request, ['ADMIN', 'TEACHER', 'STUDENT']);
-    const studentId = params.id;
+    const { id: studentId } = await params;
 
     // Build query with role-based scoping
     const whereClause = await applyScopeToStudents(user, { id: studentId });
@@ -52,7 +52,7 @@ export async function GET(
             },
           },
           orderBy: {
-            scheduledAt: 'desc',
+            classTime: 'desc',
           },
           take: 5,
         },
@@ -94,11 +94,11 @@ export async function GET(
 // PATCH /api/students/[id] - Update student details
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole(request, ['ADMIN', 'TEACHER']);
-    const studentId = params.id;
+    const { id: studentId } = await params;
     const body = await request.json();
 
     // Validate request body
@@ -203,11 +203,11 @@ export async function PATCH(
 // DELETE /api/students/[id] - Deactivate a student (soft delete)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole(request, ['ADMIN']);
-    const studentId = params.id;
+    const { id: studentId } = await params;
 
     // Check if student exists
     const existingStudent = await prisma.student.findUnique({

@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
         studentId: validatedData.studentId,
         amount: validatedData.amount,
         dueDate: new Date(validatedData.dueDate),
-        description: validatedData.description,
+        notes: validatedData.description,
         status: 'UNPAID',
       },
       include: {

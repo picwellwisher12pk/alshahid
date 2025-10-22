@@ -14,11 +14,11 @@ const updateClassSchema = z.object({
 // GET /api/classes/[id] - Get single class details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole(request, ['ADMIN', 'TEACHER', 'STUDENT']);
-    const classId = params.id;
+    const { id: classId } = await params;
 
     const classRecord = await prisma.class.findUnique({
       where: { id: classId },
@@ -89,11 +89,11 @@ export async function GET(
 // PATCH /api/classes/[id] - Update class details
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole(request, ['ADMIN', 'TEACHER']);
-    const classId = params.id;
+    const { id: classId } = await params;
     const body = await request.json();
 
     // Validate request body
@@ -191,11 +191,11 @@ export async function PATCH(
 // DELETE /api/classes/[id] - Cancel a class
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole(request, ['ADMIN', 'TEACHER']);
-    const classId = params.id;
+    const { id: classId } = await params;
 
     // Check if class exists
     const existingClass = await prisma.class.findUnique({

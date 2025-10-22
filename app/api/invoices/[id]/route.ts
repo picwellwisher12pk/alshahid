@@ -14,11 +14,11 @@ const updateInvoiceSchema = z.object({
 // GET /api/invoices/[id] - Get single invoice details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole(request, ['ADMIN', 'TEACHER', 'STUDENT']);
-    const invoiceId = params.id;
+    const { id: invoiceId } = await params;
 
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
@@ -93,11 +93,11 @@ export async function GET(
 // PATCH /api/invoices/[id] - Update invoice (Admin only)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole(request, ['ADMIN']);
-    const invoiceId = params.id;
+    const { id: invoiceId } = await params;
     const body = await request.json();
 
     // Validate request body
@@ -173,11 +173,11 @@ export async function PATCH(
 // DELETE /api/invoices/[id] - Delete invoice (Admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole(request, ['ADMIN']);
-    const invoiceId = params.id;
+    const { id: invoiceId } = await params;
 
     // Check if invoice exists
     const existingInvoice = await prisma.invoice.findUnique({

@@ -12,11 +12,11 @@ const uploadReceiptSchema = z.object({
 // POST /api/invoices/[id]/upload-receipt - Upload payment receipt (Student only)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole(request, ['STUDENT']);
-    const invoiceId = params.id;
+    const { id: invoiceId } = await params;
     const body = await request.json();
 
     // Validate request body
@@ -126,11 +126,11 @@ export async function POST(
 // GET /api/invoices/[id]/upload-receipt - List receipts for an invoice
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireRole(request, ['ADMIN', 'TEACHER', 'STUDENT']);
-    const invoiceId = params.id;
+    const { id: invoiceId } = await params;
 
     // Verify invoice exists
     const invoice = await prisma.invoice.findUnique({
