@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/src/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
 
 export async function POST(req: NextRequest) {
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
     // Import and call email service (to be implemented)
     try {
-      const { sendPasswordResetEmail } = await import('@/src/lib/email');
+      const { sendPasswordResetEmail } = await import('@/lib/email');
       await sendPasswordResetEmail(user.email, user.fullName || 'User', resetUrl);
     } catch (error) {
       console.error('Email service error:', error);

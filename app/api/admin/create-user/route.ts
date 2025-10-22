@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/src/lib/prisma';
-import { hashPassword } from '@/src/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { hashPassword } from '@/lib/auth';
 import crypto from 'crypto';
 
 // This endpoint should be protected - only admins can create users
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     const resetUrl = `${process.env.NEXT_PUBLIC_API_URL}/reset-password?token=${resetToken}`;
 
     try {
-      const { sendWelcomeEmail } = await import('@/src/lib/email');
+      const { sendWelcomeEmail } = await import('@/lib/email');
       await sendWelcomeEmail(user.email, user.fullName || 'User', temporaryPassword, resetUrl);
     } catch (error) {
       console.error('Email service error:', error);

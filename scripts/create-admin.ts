@@ -16,7 +16,7 @@
 import * as readline from 'readline';
 import { PrismaClient } from '@prisma/client';
 import * as crypto from 'crypto';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -71,7 +71,7 @@ async function sendOrDisplayCredentials(
 ): Promise<void> {
   try {
     // Try to import email service
-    const { sendWelcomeEmail } = await import('../src/lib/email');
+    const { sendWelcomeEmail } = await import('../lib/email');
     await sendWelcomeEmail(email, fullName, 'N/A', resetUrl);
     console.log('\n✅ Welcome email sent successfully!');
   } catch (error) {
