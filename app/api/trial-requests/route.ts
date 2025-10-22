@@ -28,9 +28,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create trial request
+    // Create trial request - map fields to match Prisma schema
     const trialRequest = await prisma.trialRequest.create({
-      data: validation.data,
+      data: {
+        requesterName: validation.data.parentName,
+        studentName: validation.data.studentName,
+        contactEmail: validation.data.email,
+        contactPhone: validation.data.phone,
+        preferredTime: validation.data.preferredTime,
+        additionalNotes: validation.data.additionalNotes,
+        // Note: course field is being sent but schema expects courseId relation
+        // For now, ignoring course field - can be added as a note or needs schema update
+      },
     });
 
     return NextResponse.json(

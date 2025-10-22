@@ -80,8 +80,29 @@ model TrialRequest {
   status          TrialRequestStatus  @default(PENDING)
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
+  courseId        String?             @map("course_id")
+  course          Course?             @relation(fields: [courseId], references: [id])
 
   @@map("trial_requests")
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  title       String   @unique
+  description String
+  icon        String?
+  duration    String?
+  students    String?
+  rating      String?
+  level       String?
+  features    String[]
+  color       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  trialRequests TrialRequest[]
+
+  @@map("courses")
 }
 
 enum TrialRequestStatus {
@@ -239,11 +260,13 @@ model PaymentReceipt {
   id                 String                    @id @default(cuid())
   invoiceId          String                    @map("invoice_id")
   fileUrl            String                    @map("file_url") // Supabase Storage URL
+  uploadedBy         String?                   @map("uploaded_by") // User who uploaded
   uploadedAt         DateTime                  @default(now()) @map("uploaded_at")
   verificationStatus PaymentVerificationStatus @default(PENDING) @map("verification_status")
   verifiedByUserId   String?                   @map("verified_by_user_id")
   verifiedAt         DateTime?                 @map("verified_at")
   rejectionReason    String?                   @map("rejection_reason")
+  notes              String?
 
   // Relations
   invoice    Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
