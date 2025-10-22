@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshUser,
       }}
     >
-      {!isLoading ? children : <div className="flex items-center justify-center min-h-screen">Loading...</div>}
+      {children}
     </AuthContext.Provider>
   );
 }
