@@ -65,7 +65,7 @@ export function DashboardHome() {
           {role === 'ADMIN' ? 'Admin Dashboard' : role === 'TEACHER' ? 'Teacher Dashboard' : 'Student Dashboard'}
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          Welcome back, {user?.name || user?.email}! Here's your overview.
+          Welcome back, {user?.fullName || user?.email}! Here's your overview.
         </p>
       </div>
 

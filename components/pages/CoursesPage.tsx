@@ -1,8 +1,8 @@
 "use client";
 
-import { Button } from "../components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { BookOpen, Heart, Volume2, Clock, Users, Star, Book, BookMarked, BookText, BookKey, BookA } from "lucide-react";
 import { useRouter } from "next/navigation";
 
