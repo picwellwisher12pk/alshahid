@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Mail, Search, Filter, Eye, Reply, Trash2 } from 'lucide-react';
+import { Mail, Search, Filter, Eye, Reply, Trash2, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
@@ -17,68 +17,102 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-// Mock data - replace with API calls in a real app
-const contactMessages = [
-  {
-    id: '1',
-    name: 'Mohamed Ali',
-    email: 'mohamed@example.com',
-    subject: 'Question about Quran courses',
-    message: 'I would like to know more about your advanced Tajweed program...',
-    status: 'unread',
-    receivedAt: new Date('2023-05-18T09:30:00'),
-  },
-  {
-    id: '2',
-    name: 'Aisha Khan',
-    email: 'aisha@example.com',
-    subject: 'Registration inquiry',
-    message: 'How can I register my child for the weekend classes?...',
-    status: 'read',
-    receivedAt: new Date('2023-05-17T14:15:00'),
-  },
-  {
-    id: '3',
-    name: 'Omar Farooq',
-    email: 'omar@example.com',
-    subject: 'Private lessons',
-    message: 'Interested in one-on-one Tajweed lessons...',
-    status: 'replied',
-    receivedAt: new Date('2023-05-16T11:20:00'),
-  },
-];
+interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  subject: string | null;
+  message: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export function ContactMessages() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [selectedMessage, setSelectedMessage] = useState<any>(null);
+  const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  // Fetch contact messages from API
+  useEffect(() => {
+    const fetchContactMessages = async () => {
+      try {
+        setIsLoading(true);
+        setError('');
+
+        const response = await fetch('/api/contact-messages');
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch contact messages');
+        }
+
+        const result = await response.json();
+        setContactMessages(result.data || []);
+      } catch (err) {
+        console.error('Error fetching contact messages:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load contact messages');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchContactMessages();
+  }, []);
 
   const filteredMessages = contactMessages.filter((message) => {
-    const matchesSearch = 
+    const matchesSearch =
       message.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       message.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      message.subject.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || message.status === statusFilter;
-    
+      message.subject?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus = statusFilter === 'all' || message.status.toLowerCase() === statusFilter.toLowerCase();
+
     return matchesSearch && matchesStatus;
   });
 
-  const viewMessage = (message: any) => {
+  const viewMessage = async (message: ContactMessage) => {
     setSelectedMessage(message);
     setIsViewerOpen(true);
-    
+
     // Mark as read when viewed
-    if (message.status === 'unread') {
-      // In a real app, this would be an API call
-      console.log(`Marking message ${message.id} as read`);
+    if (message.status.toLowerCase() === 'unread') {
+      try {
+        await fetch(`/api/contact-messages/${message.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'READ' }),
+        });
+
+        // Update local state
+        setContactMessages((prev) =>
+          prev.map((msg) => (msg.id === message.id ? { ...msg, status: 'READ' } : msg))
+        );
+      } catch (err) {
+        console.error('Error marking message as read:', err);
+      }
     }
   };
 
-  const deleteMessage = (id: string) => {
-    // In a real app, this would be an API call
-    console.log(`Deleting message ${id}`);
+  const deleteMessage = async (id: string) => {
+    try {
+      const response = await fetch(`/api/contact-messages/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete message');
+      }
+
+      // Remove from local state
+      setContactMessages((prev) => prev.filter((msg) => msg.id !== id));
+    } catch (err) {
+      console.error('Error deleting message:', err);
+      alert('Failed to delete message. Please try again.');
+    }
   };
 
   return (
@@ -150,110 +184,125 @@ export function ContactMessages() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>From</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Message</TableHead>
-                  <TableHead>Received</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredMessages.length > 0 ? (
-                  filteredMessages.map((message) => (
-                    <TableRow 
-                      key={message.id} 
-                      className={`cursor-pointer hover:bg-muted/50 ${message.status === 'unread' ? 'font-medium' : ''}`}
-                      onClick={() => viewMessage(message)}
-                    >
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <div>{message.name}</div>
-                            <div className="text-sm text-muted-foreground">{message.email}</div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium">{message.subject}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        <div className="truncate">{message.message}</div>
-                      </TableCell>
-                      <TableCell>{format(message.receivedAt, 'MMM d, yyyy')}</TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={
-                            message.status === 'unread' ? 'default' : 
-                            message.status === 'replied' ? 'secondary' : 'outline'
-                          }
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm mb-4">
+              {error}
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>From</TableHead>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Message</TableHead>
+                    <TableHead>Received</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredMessages.length > 0 ? (
+                    filteredMessages.map((message) => {
+                      const messageStatus = message.status.toLowerCase();
+                      const statusVariant = messageStatus === 'unread' ? 'default' : messageStatus === 'replied' ? 'secondary' : 'outline';
+
+                      return (
+                        <TableRow
+                          key={message.id}
+                          className={`cursor-pointer hover:bg-muted/50 ${messageStatus === 'unread' ? 'font-medium' : ''}`}
+                          onClick={() => viewMessage(message)}
                         >
-                          {message.status.charAt(0).toUpperCase() + message.status.slice(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end space-x-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              viewMessage(message);
-                            }}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Handle reply
-                              console.log('Reply to:', message.email);
-                            }}
-                          >
-                            <Reply className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            className="text-red-500 hover:text-red-600"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm('Are you sure you want to delete this message?')) {
-                                deleteMessage(message.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
+                              <div>
+                                <div>{message.name}</div>
+                                <div className="text-sm text-muted-foreground">{message.email}</div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {message.subject || <span className="text-muted-foreground italic">No subject</span>}
+                          </TableCell>
+                          <TableCell className="max-w-[200px] truncate">
+                            <div className="truncate">{message.message}</div>
+                          </TableCell>
+                          <TableCell>{format(new Date(message.createdAt), 'MMM d, yyyy')}</TableCell>
+                          <TableCell>
+                            <Badge variant={statusVariant}>
+                              {message.status.charAt(0).toUpperCase() + message.status.slice(1).toLowerCase()}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  viewMessage(message);
+                                }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.location.href = `mailto:${message.email}`;
+                                }}
+                              >
+                                <Reply className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-red-500 hover:text-red-600"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm('Are you sure you want to delete this message?')) {
+                                    deleteMessage(message.id);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="h-24 text-center">
+                        No messages found.
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                      No messages found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Message Viewer Dialog - Would be implemented with a Dialog component */}
+      {/* Message Viewer Dialog */}
       {isViewerOpen && selectedMessage && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-semibold">{selectedMessage.subject}</h2>
-              <button 
+              <h2 className="text-xl font-semibold">
+                {selectedMessage.subject || 'No Subject'}
+              </h2>
+              <button
                 onClick={() => setIsViewerOpen(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
@@ -266,28 +315,31 @@ export function ContactMessages() {
                   <p className="font-medium">{selectedMessage.name}</p>
                   <p className="text-sm text-muted-foreground">{selectedMessage.email}</p>
                   <p className="text-sm text-muted-foreground">
-                    {format(selectedMessage.receivedAt, 'EEEE, MMMM d, yyyy h:mm a')}
+                    {format(new Date(selectedMessage.createdAt), 'EEEE, MMMM d, yyyy h:mm a')}
                   </p>
                 </div>
-                <Badge 
+                <Badge
                   variant={
-                    selectedMessage.status === 'unread' ? 'default' : 
-                    selectedMessage.status === 'replied' ? 'secondary' : 'outline'
+                    selectedMessage.status.toLowerCase() === 'unread'
+                      ? 'default'
+                      : selectedMessage.status.toLowerCase() === 'replied'
+                        ? 'secondary'
+                        : 'outline'
                   }
                   className="self-start"
                 >
-                  {selectedMessage.status.charAt(0).toUpperCase() + selectedMessage.status.slice(1)}
+                  {selectedMessage.status.charAt(0).toUpperCase() + selectedMessage.status.slice(1).toLowerCase()}
                 </Badge>
               </div>
               <div className="prose max-w-none">
-                <p>{selectedMessage.message}</p>
+                <p className="whitespace-pre-wrap">{selectedMessage.message}</p>
               </div>
             </div>
             <div className="p-4 border-t flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setIsViewerOpen(false)}>
                 Close
               </Button>
-              <Button>
+              <Button onClick={() => (window.location.href = `mailto:${selectedMessage.email}`)}>
                 <Reply className="mr-2 h-4 w-4" />
                 Reply
               </Button>
