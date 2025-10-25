@@ -75,6 +75,7 @@ model TrialRequest {
   studentAge      Int?                @map("student_age")
   contactEmail    String              @map("contact_email")
   contactPhone    String?             @map("contact_phone")
+  courseName      String?             @map("course_name") // Course name from form
   preferredTime   String?             @map("preferred_time")
   additionalNotes String?             @map("additional_notes")
   status          TrialRequestStatus  @default(PENDING)

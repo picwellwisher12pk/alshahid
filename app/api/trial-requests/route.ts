@@ -35,10 +35,9 @@ export async function POST(request: NextRequest) {
         studentName: validation.data.studentName,
         contactEmail: validation.data.email,
         contactPhone: validation.data.phone,
+        courseName: validation.data.course, // Save course name
         preferredTime: validation.data.preferredTime,
         additionalNotes: validation.data.additionalNotes,
-        // Note: course field is being sent but schema expects courseId relation
-        // For now, ignoring course field - can be added as a note or needs schema update
       },
     });
 

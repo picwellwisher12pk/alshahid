@@ -25,6 +25,7 @@ interface TrialRequest {
   studentName: string;
   contactEmail: string;
   contactPhone: string | null;
+  courseName: string | null;
   preferredTime: string | null;
   additionalNotes: string | null;
   status: string;
@@ -209,6 +210,7 @@ export function TrialRequests() {
                     <TableHead>Parent Name</TableHead>
                     <TableHead>Student Name</TableHead>
                     <TableHead>Contact</TableHead>
+                    <TableHead>Course</TableHead>
                     <TableHead>Preferred Time</TableHead>
                     <TableHead>Requested</TableHead>
                     <TableHead>Status</TableHead>
@@ -228,7 +230,10 @@ export function TrialRequests() {
                           )}
                         </TableCell>
                         <TableCell className="text-sm">
-                          {request.preferredTime || <span className="text-muted-foreground">Not specified</span>}
+                          {request.courseName || <span className="text-muted-foreground italic">Not specified</span>}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {request.preferredTime || <span className="text-muted-foreground italic">Not specified</span>}
                         </TableCell>
                         <TableCell suppressHydrationWarning>{format(new Date(request.createdAt), 'MMM d, yyyy')}</TableCell>
                         <TableCell>
@@ -257,7 +262,7 @@ export function TrialRequests() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center">
+                      <TableCell colSpan={8} className="h-24 text-center">
                         No trial requests found.
                       </TableCell>
                     </TableRow>
@@ -324,6 +329,13 @@ export function TrialRequests() {
                     <p className="text-sm text-muted-foreground italic">Not provided</p>
                   )}
                 </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Course Interest</p>
+                <p className="text-sm">
+                  {selectedRequest.courseName || <span className="text-muted-foreground italic">Not specified</span>}
+                </p>
               </div>
 
               <div>
