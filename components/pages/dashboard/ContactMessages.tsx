@@ -6,8 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Mail, Search, Filter, Eye, Reply, Trash2, Loader2 } from 'lucide-react';
+import { Mail, Search, Filter, Eye, Reply, Trash2, Loader2, Copy, Check, Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -33,9 +36,13 @@ export function ContactMessages() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
+  const [replyMessage, setReplyMessage] = useState('');
+  const [isSendingReply, setIsSendingReply] = useState(false);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [copiedEmail, setCopiedEmail] = useState(false);
 
   // Fetch contact messages from API
   useEffect(() => {
@@ -115,6 +122,58 @@ export function ContactMessages() {
     }
   };
 
+  const copyToClipboard = async (text: string, type: 'email' | 'phone') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (type === 'email') {
+        setCopiedEmail(true);
+        setTimeout(() => setCopiedEmail(false), 2000);
+      } else {
+        setCopiedPhone(true);
+        setTimeout(() => setCopiedPhone(false), 2000);
+      }
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const openReplyModal = (message: ContactMessage) => {
+    setSelectedMessage(message);
+    setReplyMessage('');
+    setIsReplyModalOpen(true);
+  };
+
+  const sendReply = async () => {
+    if (!selectedMessage || !replyMessage.trim()) return;
+
+    try {
+      setIsSendingReply(true);
+      const response = await fetch(`/api/contact-messages/${selectedMessage.id}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: replyMessage }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send reply');
+      }
+
+      // Update message status to REPLIED
+      setContactMessages((prev) =>
+        prev.map((msg) => (msg.id === selectedMessage.id ? { ...msg, status: 'REPLIED' } : msg))
+      );
+
+      setIsReplyModalOpen(false);
+      setReplyMessage('');
+      alert('Reply sent successfully!');
+    } catch (err) {
+      console.error('Error sending reply:', err);
+      alert('Failed to send reply. Please try again.');
+    } finally {
+      setIsSendingReply(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between space-y-4 sm:flex-row sm:items-center sm:space-y-0">
@@ -143,13 +202,12 @@ export function ContactMessages() {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="w-full sm:w-auto">
                   <Filter className="mr-2 h-4 w-4" />
-                  {statusFilter === 'all' 
-                    ? 'All Messages' 
-                    : statusFilter === 'unread' 
-                      ? 'Unread' 
-                      : statusFilter === 'read' 
-                        ? 'Read' 
-                        : 'Replied'}
+                  {(() => {
+                    if (statusFilter === 'all') return 'All Messages';
+                    if (statusFilter === 'unread') return 'Unread';
+                    if (statusFilter === 'read') return 'Read';
+                    return 'Replied';
+                  })()}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -211,7 +269,12 @@ export function ContactMessages() {
                   {filteredMessages.length > 0 ? (
                     filteredMessages.map((message) => {
                       const messageStatus = message.status.toLowerCase();
-                      const statusVariant = messageStatus === 'unread' ? 'default' : messageStatus === 'replied' ? 'secondary' : 'outline';
+                      let statusVariant: 'default' | 'secondary' | 'outline' = 'outline';
+                      if (messageStatus === 'unread') {
+                        statusVariant = 'default';
+                      } else if (messageStatus === 'replied') {
+                        statusVariant = 'secondary';
+                      }
 
                       return (
                         <TableRow
@@ -234,7 +297,7 @@ export function ContactMessages() {
                           <TableCell className="max-w-[200px] truncate">
                             <div className="truncate">{message.message}</div>
                           </TableCell>
-                          <TableCell>{format(new Date(message.createdAt), 'MMM d, yyyy')}</TableCell>
+                          <TableCell suppressHydrationWarning>{format(new Date(message.createdAt), 'MMM d, yyyy')}</TableCell>
                           <TableCell>
                             <Badge variant={statusVariant}>
                               {message.status.charAt(0).toUpperCase() + message.status.slice(1).toLowerCase()}
@@ -257,7 +320,7 @@ export function ContactMessages() {
                                 size="icon"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  window.location.href = `mailto:${message.email}`;
+                                  openReplyModal(message);
                                 }}
                               >
                                 <Reply className="h-4 w-4" />
@@ -295,58 +358,131 @@ export function ContactMessages() {
       </Card>
 
       {/* Message Viewer Dialog */}
-      {isViewerOpen && selectedMessage && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-semibold">
-                {selectedMessage.subject || 'No Subject'}
-              </h2>
-              <button
-                onClick={() => setIsViewerOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto flex-1">
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <p className="font-medium">{selectedMessage.name}</p>
-                  <p className="text-sm text-muted-foreground">{selectedMessage.email}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {format(new Date(selectedMessage.createdAt), 'EEEE, MMMM d, yyyy h:mm a')}
-                  </p>
+      <Dialog open={isViewerOpen} onOpenChange={setIsViewerOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{selectedMessage?.subject || 'No Subject'}</DialogTitle>
+            <DialogDescription>
+              Message from {selectedMessage?.name}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedMessage && (
+            <div className="flex-1 overflow-y-auto space-y-4">
+              <div className="flex justify-between items-start">
+                <div className="space-y-2 flex-1">
+                  <div>
+                    <p className="font-medium text-sm text-muted-foreground">From:</p>
+                    <p className="font-medium">{selectedMessage.name}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm text-muted-foreground">Email:</p>
+                    <div className="flex items-center gap-2">
+                      <p>{selectedMessage.email}</p>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => copyToClipboard(selectedMessage.email, 'email')}
+                      >
+                        {copiedEmail ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm text-muted-foreground">Date:</p>
+                    <p className="text-sm">
+                      {format(new Date(selectedMessage.createdAt), 'EEEE, MMMM d, yyyy h:mm a')}
+                    </p>
+                  </div>
                 </div>
-                <Badge
-                  variant={
-                    selectedMessage.status.toLowerCase() === 'unread'
-                      ? 'default'
-                      : selectedMessage.status.toLowerCase() === 'replied'
-                        ? 'secondary'
-                        : 'outline'
+                {(() => {
+                  const status = selectedMessage.status.toLowerCase();
+                  let variant: 'default' | 'secondary' | 'outline' = 'outline';
+                  if (status === 'unread') {
+                    variant = 'default';
+                  } else if (status === 'replied') {
+                    variant = 'secondary';
                   }
-                  className="self-start"
-                >
-                  {selectedMessage.status.charAt(0).toUpperCase() + selectedMessage.status.slice(1).toLowerCase()}
-                </Badge>
+                  return (
+                    <Badge variant={variant} className="self-start">
+                      {selectedMessage.status.charAt(0).toUpperCase() + selectedMessage.status.slice(1).toLowerCase()}
+                    </Badge>
+                  );
+                })()}
               </div>
-              <div className="prose max-w-none">
-                <p className="whitespace-pre-wrap">{selectedMessage.message}</p>
+              <div className="border-t pt-4">
+                <p className="font-medium text-sm text-muted-foreground mb-2">Message:</p>
+                <div className="prose max-w-none">
+                  <p className="whitespace-pre-wrap text-sm">{selectedMessage.message}</p>
+                </div>
               </div>
             </div>
-            <div className="p-4 border-t flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsViewerOpen(false)}>
-                Close
-              </Button>
-              <Button onClick={() => (window.location.href = `mailto:${selectedMessage.email}`)}>
-                <Reply className="mr-2 h-4 w-4" />
-                Reply
-              </Button>
+          )}
+          <DialogFooter className="border-t pt-4">
+            <Button variant="outline" onClick={() => setIsViewerOpen(false)}>
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                setIsViewerOpen(false);
+                if (selectedMessage) openReplyModal(selectedMessage);
+              }}
+            >
+              <Reply className="mr-2 h-4 w-4" />
+              Reply
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reply Modal */}
+      <Dialog open={isReplyModalOpen} onOpenChange={setIsReplyModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Reply to Message</DialogTitle>
+            <DialogDescription>
+              Replying to {selectedMessage?.name} ({selectedMessage?.email})
+            </DialogDescription>
+          </DialogHeader>
+          {selectedMessage && (
+            <div className="space-y-4">
+              <div className="bg-muted p-4 rounded-md">
+                <p className="font-medium text-sm text-muted-foreground mb-2">Original Message:</p>
+                <p className="text-sm whitespace-pre-wrap">{selectedMessage.message}</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reply-message">Your Reply</Label>
+                <Textarea
+                  id="reply-message"
+                  placeholder="Type your reply here..."
+                  value={replyMessage}
+                  onChange={(e) => setReplyMessage(e.target.value)}
+                  rows={8}
+                  className="resize-none"
+                />
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsReplyModalOpen(false)} disabled={isSendingReply}>
+              Cancel
+            </Button>
+            <Button onClick={sendReply} disabled={isSendingReply || !replyMessage.trim()}>
+              {isSendingReply ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Send Reply
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

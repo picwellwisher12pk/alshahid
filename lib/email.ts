@@ -228,3 +228,130 @@ If you have any questions or issues, please contact your administrator.
 © ${new Date().getFullYear()} Al-Shahid Academy. All rights reserved.
   `.trim();
 }
+
+export async function sendContactReply(
+  to: string,
+  recipientName: string,
+  originalMessage: string,
+  replyMessage: string,
+  adminName: string
+) {
+  // If Resend is not configured, log to console in development
+  if (!resend) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('\n=== CONTACT REPLY EMAIL ===');
+      console.log('To:', to);
+      console.log('Recipient Name:', recipientName);
+      console.log('Admin Name:', adminName);
+      console.log('Reply Message:', replyMessage);
+      console.log('===========================\n');
+      return { success: true, mode: 'development' };
+    }
+    throw new Error('Email service not configured. Please set RESEND_API_KEY in .env');
+  }
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: 'Re: Your message to Al-Shahid Academy',
+      html: getContactReplyEmailHtml(recipientName, originalMessage, replyMessage, adminName),
+      text: getContactReplyEmailText(recipientName, originalMessage, replyMessage, adminName),
+    });
+
+    if (error) {
+      console.error('Resend error:', error);
+      throw error;
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Failed to send contact reply email:', error);
+    throw error;
+  }
+}
+
+function getContactReplyEmailHtml(
+  recipientName: string,
+  originalMessage: string,
+  replyMessage: string,
+  adminName: string
+): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Re: Your message to Al-Shahid Academy</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background-color: #f8f9fa; border-radius: 10px; padding: 30px; margin-bottom: 20px;">
+    <h1 style="color: #2c3e50; margin-top: 0;">Re: Your Message</h1>
+    <p>Hello ${recipientName},</p>
+    <p>Thank you for contacting Al-Shahid Academy. Here is our response to your inquiry:</p>
+
+    <div style="background-color: #ffffff; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; white-space: pre-wrap;">${replyMessage}</p>
+    </div>
+
+    <hr style="border: none; border-top: 1px solid #dee2e6; margin: 30px 0;">
+
+    <div style="background-color: #e9ecef; padding: 15px; border-radius: 5px;">
+      <p style="margin: 0 0 10px 0; font-weight: bold; color: #6c757d;">Your Original Message:</p>
+      <p style="margin: 0; white-space: pre-wrap;">${originalMessage}</p>
+    </div>
+
+    <hr style="border: none; border-top: 1px solid #dee2e6; margin: 30px 0;">
+
+    <p style="font-size: 14px; color: #6c757d;">
+      <strong>Need Further Assistance?</strong><br>
+      Feel free to reply to this email or contact us directly at infoalshahidinstitute@gmail.com or +92 310 4362226.
+    </p>
+
+    <p style="font-size: 14px; color: #6c757d; margin-top: 20px;">
+      Best regards,<br>
+      ${adminName}<br>
+      Al-Shahid Academy
+    </p>
+  </div>
+
+  <div style="text-align: center; color: #6c757d; font-size: 12px;">
+    <p>&copy; ${new Date().getFullYear()} Al-Shahid Academy. All rights reserved.</p>
+  </div>
+</body>
+</html>
+  `.trim();
+}
+
+function getContactReplyEmailText(
+  recipientName: string,
+  originalMessage: string,
+  replyMessage: string,
+  adminName: string
+): string {
+  return `
+Re: Your Message to Al-Shahid Academy
+
+Hello ${recipientName},
+
+Thank you for contacting Al-Shahid Academy. Here is our response to your inquiry:
+
+${replyMessage}
+
+---
+Your Original Message:
+${originalMessage}
+---
+
+Need Further Assistance?
+Feel free to reply to this email or contact us directly at infoalshahidinstitute@gmail.com or +92 310 4362226.
+
+Best regards,
+${adminName}
+Al-Shahid Academy
+
+---
+© ${new Date().getFullYear()} Al-Shahid Academy. All rights reserved.
+  `.trim();
+}
