@@ -8,14 +8,15 @@ import { Adapter } from 'next-auth/adapters';
 
 declare module 'next-auth' {
   interface User {
-    id: string;
-    email: string;
     role: UserRole;
-    name?: string | null;
   }
 
   interface Session {
-    user: User;
+    user: User & {
+      id: string;
+      email: string;
+      role: UserRole;
+    };
   }
 }
 
