@@ -1,5 +1,5 @@
 import { prisma } from './prisma';
-import { randomBytes } from 'crypto';
+import { randomBytes } from 'node:crypto';
 import { sendEnrollmentEmail } from './email/templates/enrollment';
 
 export async function initiateEnrollmentProcess(trialRequestId: string) {
@@ -14,7 +14,7 @@ export async function initiateEnrollmentProcess(trialRequestId: string) {
     data: {
       enrollmentToken: token,
       enrollmentTokenExpiresAt: expiresAt,
-      status: 'PENDING_ENROLLMENT',
+      status: 'SCHEDULED',
     },
   });
 

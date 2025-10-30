@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { randomBytes } from 'crypto';
+import { randomBytes } from 'node:crypto';
 import { sendEnrollmentEmail } from '@/lib/email/templates/enrollment';
 
 export async function POST(req: Request) {
@@ -50,10 +50,7 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET(
-  req: Request,
-  { params }: { params: { token: string } }
-) {
+export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const token = searchParams.get('token');

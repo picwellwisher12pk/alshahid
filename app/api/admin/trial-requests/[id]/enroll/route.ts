@@ -1,16 +1,15 @@
 import { NextResponse } from 'next/server';
-import { auth, handlers } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { auth } from '@/lib/auth';
 import { initiateEnrollmentProcess } from '@/lib/enrollment';
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth();
-    
-    if (!session || !session.user) {
+
+    if (!session?.user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -25,7 +24,7 @@ export async function POST(
       );
     }
 
-    const trialRequestId = params.id;
+    const { id: trialRequestId } = await params;
 
     // Initiate the enrollment process
     const updatedRequest = await initiateEnrollmentProcess(trialRequestId);
@@ -45,5 +44,3 @@ export async function POST(
     );
   }
 }
-
-export const { GET, POST: _ } = handlers;

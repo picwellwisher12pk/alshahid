@@ -383,7 +383,7 @@ export function ContactMessages() {
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
-                        onClick={() => copyToClipboard(selectedMessage.email, 'email')}
+                        onClick={() => handleCopyContact(selectedMessage.email, 'email')}
                       >
                         {copiedEmail ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
                       </Button>

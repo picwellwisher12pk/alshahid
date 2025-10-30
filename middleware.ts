@@ -43,17 +43,12 @@ const roleBasedRoutes: Record<UserRole, string[]> = {
     '/dashboard/progress',
     '/dashboard/invoices',
     '/dashboard/profile'
-  ],
-  PARENT: [
-    '/dashboard/children',
-    '/dashboard/progress',
-    '/dashboard/invoices'
   ]
 } as const;
 
 // Type guard to check if a string is a valid UserRole
 function isUserRole(role: string | undefined): role is UserRole {
-  return !!role && ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT'].includes(role);
+  return !!role && ['ADMIN', 'TEACHER', 'STUDENT'].includes(role);
 }
 
 export async function middleware(request: NextRequest) {
@@ -98,13 +93,12 @@ export async function middleware(request: NextRequest) {
 
         if (!hasAccess) {
           // Redirect to appropriate dashboard based on role
-          const defaultRoutes = {
+          const defaultRoutes: Record<UserRole, string> = {
             ADMIN: '/dashboard',
             TEACHER: '/dashboard/classes',
-            STUDENT: '/dashboard/schedule',
-            PARENT: '/dashboard/children'
+            STUDENT: '/dashboard/schedule'
           };
-          
+
           const defaultRoute = defaultRoutes[userRole] || '/login';
           return NextResponse.redirect(new URL(defaultRoute, request.url));
         }

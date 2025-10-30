@@ -1,6 +1,14 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialization to avoid build-time errors
+let resend: Resend | null = null;
+
+function getResendClient() {
+  if (!resend && process.env.RESEND_API_KEY) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+}
 
 type EnrollmentEmailProps = {
   studentName: string;
@@ -12,7 +20,13 @@ export async function sendEnrollmentEmail(
   { studentName, enrollmentUrl }: EnrollmentEmailProps
 ) {
   try {
-    const { data, error } = await resend.emails.send({
+    const client = getResendClient();
+    if (!client) {
+      console.warn('RESEND_API_KEY not configured. Email will not be sent.');
+      return { error: 'Email service not configured' };
+    }
+
+    const { data, error } = await client.emails.send({
       from: 'Al Shahid Academy <noreply@alshahidacademy.pk>', // Update with your domain
       to,
       subject: 'Complete Your Enrollment - Al Shahid Academy',

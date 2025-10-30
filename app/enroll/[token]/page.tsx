@@ -8,12 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
-export default function EnrollmentPage({ params }: { params: { token: string } }) {
+export default function EnrollmentPage({ params }: { params: Promise<{ token: string }> }) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [trialRequest, setTrialRequest] = useState<{
     id: string;
     studentName: string;
@@ -26,7 +27,9 @@ export default function EnrollmentPage({ params }: { params: { token: string } }
   useEffect(() => {
     const validateToken = async () => {
       try {
-        const response = await fetch(`/api/enrollment?token=${params.token}`);
+        const resolvedParams = await params;
+        setToken(resolvedParams.token);
+        const response = await fetch(`/api/enrollment?token=${resolvedParams.token}`);
         
         if (!response.ok) {
           const error = await response.json();
@@ -43,7 +46,7 @@ export default function EnrollmentPage({ params }: { params: { token: string } }
     };
 
     validateToken();
-  }, [params.token]);
+  }, [params]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {

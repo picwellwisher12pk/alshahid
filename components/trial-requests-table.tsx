@@ -21,7 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 
 type TrialRequest = {
   id: string;
@@ -51,17 +51,14 @@ export function TrialRequestsTable({ trialRequests, onEnroll }: TrialRequestsTab
       setLoadingId(id);
       await onEnroll(id);
       
-      toast({
-        title: 'Enrollment email sent',
+      toast.success('Enrollment email sent', {
         description: 'The student has been sent an email to complete their enrollment.',
       });
     } catch (error) {
       console.error('Error sending enrollment email:', error);
       
-      toast({
-        title: 'Error',
+      toast.error('Error', {
         description: 'Failed to send enrollment email. Please try again.',
-        variant: 'destructive',
       });
     } finally {
       setLoadingId(null);

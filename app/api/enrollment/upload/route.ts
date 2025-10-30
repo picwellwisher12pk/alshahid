@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 
 export async function POST(req: Request) {
   try {
@@ -47,27 +45,41 @@ export async function POST(req: Request) {
     // For now, we'll just use a placeholder
     const fileUrl = `/uploads/${fileName}`;
 
-    // Create enrollment payment record
-    const enrollmentPayment = await prisma.enrollmentPayment.create({
-      data: {
-        trialRequestId,
-        amount: 0, // Set the actual amount as needed
-        paymentProofUrl: fileUrl,
-        notes,
-        status: 'PENDING',
-      },
+    // Check if enrollment payment already exists
+    const existingPayment = await prisma.enrollmentPayment.findUnique({
+      where: { trialRequestId },
     });
 
-    // Update trial request with enrollment payment ID
+    if (existingPayment) {
+      // Update existing payment with proof
+      await prisma.enrollmentPayment.update({
+        where: { id: existingPayment.id },
+        data: {
+          paymentProofUrl: fileUrl,
+          notes,
+          status: 'PENDING',
+        },
+      });
+    } else {
+      // Create new enrollment payment record
+      await prisma.enrollmentPayment.create({
+        data: {
+          trialRequestId,
+          amount: 0, // Will be set by admin when converting trial
+          paymentProofUrl: fileUrl,
+          notes,
+          status: 'PENDING',
+        },
+      });
+    }
+
+    // Update trial request status to indicate payment proof submitted
     await prisma.trialRequest.update({
       where: { id: trialRequestId },
       data: {
-        enrollmentPaymentId: enrollmentPayment.id,
-        status: 'PENDING_PAYMENT_VERIFICATION',
+        status: 'SCHEDULED', // Waiting for admin to verify payment
       },
     });
-
-    // TODO: Send notification to admin about new payment proof
 
     return NextResponse.json({ success: true });
   } catch (error) {
