@@ -1,24 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { hashPassword } from '@/lib/auth';
 import { requireRole } from '@/lib/rbac';
+import { sendEnrollmentPaymentLink } from '@/lib/email';
+import crypto from 'node:crypto';
 
 const convertTrialSchema = z.object({
   teacherId: z.string(),
-  createLoginAccount: z.boolean().default(true),
-  email: z.string().email().optional(),
-  password: z.string().min(8).optional(),
-  status: z.enum(['ACTIVE', 'TRIAL']).default('TRIAL'),
+  enrollmentFee: z.number().positive(),
+  currency: z.string().default('PKR'),
 });
 
-// POST - Convert trial request to actual student (Admin only)
+// POST - Convert trial request to student with enrollment payment (Option B)
+// Admin triggers this, student gets magic link for payment, then gets account after approval
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await requireRole(request, ['ADMIN']);
+    await requireRole(request, ['ADMIN']);
     const { id: trialRequestId } = await params;
 
     const body = await request.json();
@@ -31,7 +31,7 @@ export async function POST(
       );
     }
 
-    const { teacherId, createLoginAccount, email, password, status } = validation.data;
+    const { teacherId, enrollmentFee, currency } = validation.data;
 
     // Get trial request
     const trialRequest = await prisma.trialRequest.findUnique({
@@ -64,120 +64,76 @@ export async function POST(
       );
     }
 
-    // If creating login, validate credentials
-    if (createLoginAccount && (!email || !password)) {
-      return NextResponse.json(
-        { error: 'Email and password required for login account' },
-        { status: 400 }
-      );
-    }
+    // Generate magic token
+    const magicToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(magicToken).digest('hex');
 
-    // Create student and update trial request in transaction
+    // Set expiration to 48 hours from now
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 48);
+
+    // Create enrollment payment record with magic link
     const result = await prisma.$transaction(async (tx) => {
-      let newStudent;
-
-      if (createLoginAccount && email && password) {
-        // Check if email exists
-        const existingUser = await tx.user.findUnique({
-          where: { email },
-        });
-
-        if (existingUser) {
-          throw new Error('User with this email already exists');
-        }
-
-        const hashedPassword = await hashPassword(password);
-
-        // Create user account
-        const newUser = await tx.user.create({
-          data: {
-            email,
-            fullName: trialRequest.studentName,
-            password: hashedPassword,
-            role: 'STUDENT',
-            emailVerified: true,
-          },
-        });
-
-        // Create student with user link
-        newStudent = await tx.student.create({
-          data: {
-            userId: newUser.id,
-            fullName: trialRequest.studentName,
-            age: trialRequest.studentAge || undefined,
-            contactPhone: trialRequest.contactPhone || undefined,
-            contactEmail: trialRequest.contactEmail,
-            teacherId,
-            status,
-          },
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                fullName: true,
-              },
-            },
-            teacher: {
-              select: {
-                id: true,
-                user: {
-                  select: {
-                    fullName: true,
-                  },
-                },
-              },
-            },
-          },
-        });
-      } else {
-        // Create student without login
-        newStudent = await tx.student.create({
-          data: {
-            fullName: trialRequest.studentName,
-            age: trialRequest.studentAge || undefined,
-            contactPhone: trialRequest.contactPhone || undefined,
-            contactEmail: trialRequest.contactEmail,
-            teacherId,
-            status,
-          },
-          include: {
-            teacher: {
-              select: {
-                id: true,
-                user: {
-                  select: {
-                    fullName: true,
-                  },
-                },
-              },
-            },
-          },
-        });
-      }
-
-      // Update trial request status
-      const updatedTrialRequest = await tx.trialRequest.update({
-        where: { id: trialRequestId },
-        data: { status: 'CONVERTED' },
+      // Create enrollment payment record
+      const enrollmentPayment = await tx.enrollmentPayment.create({
+        data: {
+          trialRequestId,
+          amount: enrollmentFee,
+          currency,
+          magicToken: hashedToken,
+          magicTokenExpiry: expiresAt,
+          status: 'PENDING',
+        },
       });
 
-      return { student: newStudent, trialRequest: updatedTrialRequest };
+      // Update trial request status to SCHEDULED (waiting for payment)
+      const updatedTrialRequest = await tx.trialRequest.update({
+        where: { id: trialRequestId },
+        data: { status: 'SCHEDULED' },
+      });
+
+      return { enrollmentPayment, trialRequest: updatedTrialRequest };
     });
 
+    // Generate payment link URL
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const paymentLinkUrl = `${baseUrl}/enroll/${magicToken}`;
+
+    // Send enrollment payment email with magic link
+    try {
+      await sendEnrollmentPaymentLink(
+        trialRequest.contactEmail,
+        trialRequest.studentName,
+        enrollmentFee,
+        currency,
+        paymentLinkUrl
+      );
+    } catch (emailError) {
+      console.error('Failed to send enrollment email:', emailError);
+      // Continue anyway - admin can manually share the link
+      if (process.env.NODE_ENV === 'development') {
+        console.log('\n=== ENROLLMENT PAYMENT LINK ===');
+        console.log('Student:', trialRequest.studentName);
+        console.log('Email:', trialRequest.contactEmail);
+        console.log('Payment Link:', paymentLinkUrl);
+        console.log('Expires:', expiresAt);
+        console.log('================================\n');
+      }
+    }
+
     return NextResponse.json({
-      message: 'Trial request converted to student successfully',
-      data: result,
+      message: 'Trial request converted successfully. Enrollment payment link sent to student.',
+      data: {
+        enrollmentPayment: result.enrollmentPayment,
+        trialRequest: result.trialRequest,
+        paymentLink: process.env.NODE_ENV === 'development' ? paymentLinkUrl : undefined,
+      },
     });
   } catch (error: any) {
     console.error('Convert trial error:', error);
 
     if (error.message === 'Unauthorized' || error.message.includes('Forbidden')) {
       return NextResponse.json({ error: error.message }, { status: 403 });
-    }
-
-    if (error.message === 'User with this email already exists') {
-      return NextResponse.json({ error: error.message }, { status: 409 });
     }
 
     return NextResponse.json(

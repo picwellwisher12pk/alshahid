@@ -28,6 +28,7 @@ model User {
   teacherProfile          Teacher?
   studentProfile          Student?
   verifiedPaymentReceipts PaymentReceipt[] @relation("VerifiedBy")
+  verifiedEnrollmentPayments EnrollmentPayment[] @relation("VerifiedBy")
 
   @@map("users")
 }
@@ -79,10 +80,16 @@ model TrialRequest {
   preferredTime   String?             @map("preferred_time")
   additionalNotes String?             @map("additional_notes")
   status          TrialRequestStatus  @default(PENDING)
+  enrollmentToken String?             @unique @map("enrollment_token") // For secure enrollment link
+  enrollmentTokenExpiresAt DateTime?  @map("enrollment_token_expires_at") // 24-48h expiration
+  enrollmentPaymentId String?         @unique @map("enrollment_payment_id") // Link to enrollment payment
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   courseId        String?             @map("course_id")
+  
+  // Relations
   course          Course?             @relation(fields: [courseId], references: [id])
+  enrollmentPayment EnrollmentPayment?
 
   @@map("trial_requests")
 }
@@ -164,15 +171,17 @@ model Student {
   contactPhone  String?       @map("contact_phone")
   contactEmail  String?       @map("contact_email")
   status        StudentStatus @default(ACTIVE)
+  enrollmentPaymentId String?  @unique @map("enrollment_payment_id") // Link to enrollment payment
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
   // Relations
-  user         User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
-  teacher      Teacher?       @relation(fields: [teacherId], references: [id], onDelete: SetNull)
-  classes      Class[]
-  progressLogs ProgressLog[]
-  invoices     Invoice[]
+  user                  User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  teacher               Teacher?           @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  classes               Class[]
+  progressLogs          ProgressLog[]
+  invoices              Invoice[]
+  enrollmentPayment     EnrollmentPayment?  @relation("StudentEnrollment")
 
   @@map("students")
 }
@@ -274,6 +283,31 @@ model PaymentReceipt {
   verifiedBy User?   @relation("VerifiedBy", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
 
   @@map("payment_receipts")
+}
+
+// Enrollment payment for trial conversion
+model EnrollmentPayment {
+  id                  String                    @id @default(cuid())
+  trialRequestId      String                    @unique @map("trial_request_id")
+  amount              Decimal                   @db.Decimal(10, 2)
+  currency            String                    @default("PKR")
+  magicToken          String?                   @unique @map("magic_token") // Hashed token for magic link
+  magicTokenExpiry    DateTime?                 @map("magic_token_expiry")
+  paymentProofUrl     String?                   @map("payment_proof_url") // Supabase Storage URL
+  notes               String?                   // Optional notes from student
+  status              PaymentVerificationStatus @default(PENDING)
+  verifiedByUserId    String?                   @map("verified_by_user_id")
+  verifiedAt          DateTime?                 @map("verified_at")
+  rejectionReason     String?                   @map("rejection_reason")
+  createdAt           DateTime                  @default(now()) @map("created_at")
+  updatedAt           DateTime                  @updatedAt @map("updated_at")
+
+  // Relations
+  trialRequest        TrialRequest              @relation(fields: [trialRequestId], references: [id])
+  verifiedBy          User?                     @relation("VerifiedBy", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  student             Student?                  @relation("StudentEnrollment", fields: [id], references: [enrollmentPaymentId])
+
+  @@map("enrollment_payments")
 }
 
 enum PaymentVerificationStatus {

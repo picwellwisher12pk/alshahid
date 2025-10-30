@@ -1,120 +1,124 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyToken } from '@/lib/jwt';
+import { auth } from '@/lib/auth';
+import { UserRole } from '@prisma/client';
+
+// Force middleware to use Node.js runtime
+export const runtime = 'nodejs';
+
+// Define public routes that don't require authentication
+const publicRoutes = [
+  '/',
+  '/login', 
+  '/register', 
+  '/forgot-password',
+  '/api/auth',
+  '/enroll',
+  '/enrollment-success',
+  '/_next',
+  '/favicon.ico'
+];
 
 // Define protected routes and their required roles
 const protectedRoutes = ['/dashboard'];
-const authRoutes = ['/login'];
 
 // Role-based route access control
-const roleBasedRoutes = {
-  admin: [
+const roleBasedRoutes: Record<UserRole, string[]> = {
+  ADMIN: [
     '/dashboard/teachers',
-    '/dashboard/all-students',
+    '/dashboard/students',
     '/dashboard/trial-requests',
-    '/dashboard/payment-verification',
+    '/dashboard/enrollments',
     '/dashboard/invoices',
+    '/dashboard/settings'
   ],
-  teacher: [
-    '/dashboard/my-students',
+  TEACHER: [
     '/dashboard/classes',
-    '/dashboard/progress-logs',
-    '/dashboard/teacher',
+    '/dashboard/students',
+    '/dashboard/progress',
+    '/dashboard/attendance'
   ],
-  student: [
-    '/portal/schedule',
-    '/portal/progress',
-    '/portal/invoices',
-    '/portal/profile',
+  STUDENT: [
+    '/dashboard/schedule',
+    '/dashboard/progress',
+    '/dashboard/invoices',
+    '/dashboard/profile'
   ],
-};
+  PARENT: [
+    '/dashboard/children',
+    '/dashboard/progress',
+    '/dashboard/invoices'
+  ]
+} as const;
+
+// Type guard to check if a string is a valid UserRole
+function isUserRole(role: string | undefined): role is UserRole {
+  return !!role && ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT'].includes(role);
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Get tokens from cookies
-  const accessToken = request.cookies.get('accessToken')?.value;
-  const refreshToken = request.cookies.get('refreshToken')?.value;
-
-  // Check if route is protected
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
-  const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
-  const isRoleBasedRoute =
-    Object.values(roleBasedRoutes).flat().some(route => pathname.startsWith(route));
-
-  // If accessing protected route or role-based route
-  if (isProtectedRoute || isRoleBasedRoute) {
-    // No access token, redirect to login
-    if (!accessToken) {
-      const url = new URL('/login', request.url);
-      url.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(url);
-    }
-
-    // Verify access token
-    const payload = await verifyToken(accessToken);
-    if (!payload) {
-      // Token invalid, clear cookies and redirect to login
-      const response = NextResponse.redirect(new URL('/login', request.url));
-      response.cookies.delete('accessToken');
-      response.cookies.delete('refreshToken');
-      return response;
-    }
-
-    // Check role-based access
-    if (isRoleBasedRoute && payload.role) {
-      const userRole = payload.role.toLowerCase();
-      let hasAccess = false;
-
-      // Check if user's role has access to this route
-      if (userRole === 'admin') {
-        // Admin has access to all routes
-        hasAccess = true;
-      } else if (userRole === 'teacher') {
-        hasAccess = roleBasedRoutes.teacher.some(route => pathname.startsWith(route));
-      } else if (userRole === 'student') {
-        hasAccess = roleBasedRoutes.student.some(route => pathname.startsWith(route));
-      }
-
-      if (!hasAccess) {
-        // Redirect to appropriate dashboard based on role
-        let redirectPath = '/dashboard';
-        if (userRole === 'admin') {
-          redirectPath = '/dashboard/teachers';
-        } else if (userRole === 'teacher') {
-          redirectPath = '/dashboard/my-students';
-        } else if (userRole === 'student') {
-          redirectPath = '/portal/schedule';
-        }
-        return NextResponse.redirect(new URL(redirectPath, request.url));
-      }
-    }
-
-    // Token valid and has access, allow access
+  // Skip middleware for public routes
+  const isPublicRoute = publicRoutes.some(route => 
+    pathname === route || pathname.startsWith(`${route}/`)
+  );
+  
+  if (isPublicRoute) {
     return NextResponse.next();
   }
 
-  // If accessing auth routes (login) while already authenticated
-  if (isAuthRoute && accessToken) {
-    const payload = await verifyToken(accessToken);
-    if (payload) {
-      // Already logged in, redirect to appropriate dashboard based on role
-      let redirectPath = '/dashboard';
-      if (payload.role) {
-        const userRole = payload.role.toLowerCase();
-        if (userRole === 'admin') {
-          redirectPath = '/dashboard/teachers';
-        } else if (userRole === 'teacher') {
-          redirectPath = '/dashboard/my-students';
-        } else if (userRole === 'student') {
-          redirectPath = '/portal/schedule';
+  try {
+    // Get session
+    const session = await auth();
+    const userRole = session?.user?.role;
+
+    // Check if route is protected
+    const isProtectedRoute = protectedRoutes.some(route => 
+      pathname.startsWith(route)
+    );
+    
+    const isRoleBasedRoute = Object.values(roleBasedRoutes).some(routes => 
+      routes.some(route => pathname.startsWith(route))
+    );
+
+    // Handle protected routes
+    if (isProtectedRoute || isRoleBasedRoute) {
+      // No session, redirect to login
+      if (!session || !userRole || !isUserRole(userRole)) {
+        const url = new URL('/login', request.url);
+        url.searchParams.set('callbackUrl', pathname);
+        return NextResponse.redirect(url);
+      }
+
+      // Check role-based access for role-based routes
+      if (isRoleBasedRoute) {
+        const userRoutes = roleBasedRoutes[userRole] || [];
+        const hasAccess = userRoutes.some(route => pathname.startsWith(route));
+
+        if (!hasAccess) {
+          // Redirect to appropriate dashboard based on role
+          const defaultRoutes = {
+            ADMIN: '/dashboard',
+            TEACHER: '/dashboard/classes',
+            STUDENT: '/dashboard/schedule',
+            PARENT: '/dashboard/children'
+          };
+          
+          const defaultRoute = defaultRoutes[userRole] || '/login';
+          return NextResponse.redirect(new URL(defaultRoute, request.url));
         }
       }
-      return NextResponse.redirect(new URL(redirectPath, request.url));
     }
-  }
 
-  return NextResponse.next();
+    return NextResponse.next();
+  } catch (error) {
+    console.error('Middleware error:', error);
+    // In case of error, redirect to login
+    const url = new URL('/login', request.url);
+    url.searchParams.set('error', 'SessionError');
+    return NextResponse.redirect(url);
+  }
 }
 
 // Configure which routes to run middleware on
@@ -122,12 +126,13 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
+     * - api/auth (NextAuth API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
+     * - assets folder
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!api/auth|_next/static|_next/image|favicon.ico|public/|assets/).*)',
   ],
 };

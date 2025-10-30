@@ -43,6 +43,7 @@ export function ContactMessages() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [copiedEmail, setCopiedEmail] = useState(false);
+  const [copiedPhone, setCopiedPhone] = useState(false);
 
   // Fetch contact messages from API
   useEffect(() => {
@@ -122,9 +123,9 @@ export function ContactMessages() {
     }
   };
 
-  const copyToClipboard = async (text: string, type: 'email' | 'phone') => {
+  const handleCopyContact = (text: string, type: 'email' | 'phone' = 'email') => {
     try {
-      await navigator.clipboard.writeText(text);
+      navigator.clipboard.writeText(text);
       if (type === 'email') {
         setCopiedEmail(true);
         setTimeout(() => setCopiedEmail(false), 2000);
@@ -133,7 +134,7 @@ export function ContactMessages() {
         setTimeout(() => setCopiedPhone(false), 2000);
       }
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error('Failed to copy text: ', err);
     }
   };
 
