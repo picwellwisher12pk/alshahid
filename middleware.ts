@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { auth } from '@/lib/auth';
+import { verifyToken } from '@/lib/jwt';
 import { UserRole } from '@prisma/client';
 
 // Force middleware to use Node.js runtime
@@ -64,23 +64,31 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    // Get session
-    const session = await auth();
-    const userRole = session?.user?.role;
+    // Get JWT token from cookies
+    const accessToken = request.cookies.get('accessToken')?.value;
+
+    // Verify token and get user info
+    let userRole: UserRole | undefined;
+    if (accessToken) {
+      const payload = await verifyToken(accessToken);
+      if (payload && payload.role) {
+        userRole = payload.role as UserRole;
+      }
+    }
 
     // Check if route is protected
-    const isProtectedRoute = protectedRoutes.some(route => 
+    const isProtectedRoute = protectedRoutes.some(route =>
       pathname.startsWith(route)
     );
-    
-    const isRoleBasedRoute = Object.values(roleBasedRoutes).some(routes => 
+
+    const isRoleBasedRoute = Object.values(roleBasedRoutes).some(routes =>
       routes.some(route => pathname.startsWith(route))
     );
 
     // Handle protected routes
     if (isProtectedRoute || isRoleBasedRoute) {
-      // No session, redirect to login
-      if (!session || !userRole || !isUserRole(userRole)) {
+      // No token or invalid role, redirect to login
+      if (!accessToken || !userRole || !isUserRole(userRole)) {
         const url = new URL('/login', request.url);
         url.searchParams.set('callbackUrl', pathname);
         return NextResponse.redirect(url);
