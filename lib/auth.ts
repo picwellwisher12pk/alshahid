@@ -129,7 +129,8 @@ export const authConfig = {
   pages: {
     signIn: '/login',
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+  trustHost: true,
 };
 
 const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
