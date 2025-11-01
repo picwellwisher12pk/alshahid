@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Clock, Search, Filter, Loader2, Eye, Copy, Check, X } from 'lucide-react';
+import { CheckCircle2, Clock, Search, Filter, Loader2, Eye, Copy, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -45,6 +45,11 @@ export function TrialRequests() {
   const [newStatus, setNewStatus] = useState('');
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
+  const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
+  const [teachers, setTeachers] = useState<Array<{ id: string; fullName: string }>>([]);
+  const [selectedTeacherId, setSelectedTeacherId] = useState('');
+  const [enrollmentFee, setEnrollmentFee] = useState('5000');
+  const [currency, setCurrency] = useState('PKR');
 
   // Fetch trial requests from API
   useEffect(() => {
@@ -108,6 +113,23 @@ export function TrialRequests() {
   const handleUpdateStatus = async () => {
     if (!selectedRequest || !newStatus) return;
 
+    // If converting to student, open the conversion dialog
+    if (newStatus === 'CONVERTED') {
+      setIsDetailsOpen(false);
+      setIsConvertDialogOpen(true);
+      // Fetch teachers for the dropdown
+      try {
+        const response = await fetch('/api/teachers');
+        if (response.ok) {
+          const result = await response.json();
+          setTeachers(result.data || []);
+        }
+      } catch (err) {
+        console.error('Error fetching teachers:', err);
+      }
+      return;
+    }
+
     try {
       setIsUpdatingStatus(true);
       const response = await fetch(`/api/trial-requests/${selectedRequest.id}`, {
@@ -130,6 +152,55 @@ export function TrialRequests() {
     } catch (err) {
       console.error('Error updating trial request status:', err);
       alert('Failed to update status. Please try again.');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleConvertToStudent = async () => {
+    if (!selectedRequest || !selectedTeacherId || !enrollmentFee) {
+      alert('Please select a teacher and enter enrollment fee');
+      return;
+    }
+
+    try {
+      setIsUpdatingStatus(true);
+      const response = await fetch(`/api/trial-requests/${selectedRequest.id}/convert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teacherId: selectedTeacherId,
+          enrollmentFee: parseFloat(enrollmentFee),
+          currency,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to convert trial request');
+      }
+
+      const result = await response.json();
+
+      // Update local state
+      setTrialRequests((prev) =>
+        prev.map((req) =>
+          req.id === selectedRequest.id ? { ...req, status: 'SCHEDULED' } : req
+        )
+      );
+
+      setIsConvertDialogOpen(false);
+      alert(result.message || 'Trial request converted successfully! Enrollment email sent to student.');
+
+      // Refresh the list
+      const refreshResponse = await fetch('/api/trial-requests');
+      if (refreshResponse.ok) {
+        const refreshResult = await refreshResponse.json();
+        setTrialRequests(refreshResult.data || []);
+      }
+    } catch (err) {
+      console.error('Error converting trial request:', err);
+      alert(err instanceof Error ? err.message : 'Failed to convert trial request. Please try again.');
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -395,6 +466,90 @@ export function TrialRequests() {
                 </>
               ) : (
                 'Update Status'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Convert to Student Dialog */}
+      <Dialog open={isConvertDialogOpen} onOpenChange={setIsConvertDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Convert to Student</DialogTitle>
+            <DialogDescription>
+              Assign a teacher and set enrollment fee. Student will receive an email with payment link.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedRequest && (
+            <div className="space-y-4 py-4">
+              <div>
+                <p className="text-sm font-medium mb-2">Student: {selectedRequest.studentName}</p>
+                <p className="text-sm text-muted-foreground">Email: {selectedRequest.contactEmail}</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Assign Teacher</label>
+                <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a teacher" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teachers.map((teacher) => (
+                      <SelectItem key={teacher.id} value={teacher.id}>
+                        {teacher.fullName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Enrollment Fee</label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    value={enrollmentFee}
+                    onChange={(e) => setEnrollmentFee(e.target.value)}
+                    placeholder="5000"
+                    className="flex-1"
+                  />
+                  <Select value={currency} onValueChange={setCurrency}>
+                    <SelectTrigger className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PKR">PKR</SelectItem>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 p-3 rounded-md text-sm">
+                <p className="font-medium text-blue-900 mb-1">What happens next:</p>
+                <ul className="text-blue-700 space-y-1 text-xs list-disc list-inside">
+                  <li>Student receives email with payment link (48h validity)</li>
+                  <li>Student uploads payment proof via the link</li>
+                  <li>Admin verifies payment and approves enrollment</li>
+                  <li>Student gets account credentials and access to portal</li>
+                </ul>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsConvertDialogOpen(false)} disabled={isUpdatingStatus}>
+              Cancel
+            </Button>
+            <Button onClick={handleConvertToStudent} disabled={isUpdatingStatus || !selectedTeacherId || !enrollmentFee}>
+              {isUpdatingStatus ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Converting...
+                </>
+              ) : (
+                'Convert & Send Email'
               )}
             </Button>
           </DialogFooter>
