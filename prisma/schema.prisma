@@ -181,7 +181,7 @@ model Student {
   classes               Class[]
   progressLogs          ProgressLog[]
   invoices              Invoice[]
-  enrollmentPayment     EnrollmentPayment?  @relation("StudentEnrollment")
+  enrollmentPayment     EnrollmentPayment?  @relation("StudentEnrollment", fields: [enrollmentPaymentId], references: [id])
 
   @@map("students")
 }
@@ -305,7 +305,7 @@ model EnrollmentPayment {
   // Relations
   trialRequest        TrialRequest              @relation(fields: [trialRequestId], references: [id])
   verifiedBy          User?                     @relation("VerifiedBy", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
-  student             Student?                  @relation("StudentEnrollment", fields: [id], references: [enrollmentPaymentId])
+  student             Student?                  @relation("StudentEnrollment")
 
   @@map("enrollment_payments")
 }
