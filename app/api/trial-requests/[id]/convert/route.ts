@@ -18,7 +18,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireRole(request, ['ADMIN']);
+    const authPayload = await requireRole(request, ['ADMIN']);
     const { id: trialRequestId } = await params;
 
     const body = await request.json();
@@ -31,7 +31,8 @@ export async function POST(
       );
     }
 
-    const { teacherId, enrollmentFee, currency } = validation.data;
+    let { teacherId } = validation.data;
+    const { enrollmentFee, currency } = validation.data;
 
     // Get trial request
     const trialRequest = await prisma.trialRequest.findUnique({
@@ -50,6 +51,42 @@ export async function POST(
         { error: 'Trial request already converted' },
         { status: 400 }
       );
+    }
+
+    // Handle auto-assign-admin case: create teacher profile for current admin if needed
+    if (teacherId === 'auto-assign-admin') {
+      const userId = authPayload?.userId;
+
+      if (!userId) {
+        return NextResponse.json(
+          { error: 'Unable to identify admin user' },
+          { status: 401 }
+        );
+      }
+
+      // Check if admin already has a teacher profile
+      let adminTeacher = await prisma.teacher.findUnique({
+        where: { userId },
+      });
+
+      // If not, create one
+      if (!adminTeacher) {
+        const adminUser = await prisma.user.findUnique({
+          where: { id: userId },
+        });
+
+        adminTeacher = await prisma.teacher.create({
+          data: {
+            userId,
+            bio: 'Academy Administrator',
+            isActive: true,
+          },
+        });
+
+        console.log(`Created teacher profile for admin: ${adminUser?.email}`);
+      }
+
+      teacherId = adminTeacher.id;
     }
 
     // Verify teacher exists

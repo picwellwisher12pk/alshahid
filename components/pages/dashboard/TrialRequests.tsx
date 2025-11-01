@@ -122,10 +122,21 @@ export function TrialRequests() {
         const response = await fetch('/api/teachers');
         if (response.ok) {
           const result = await response.json();
-          setTeachers(result.data || []);
+          const teachersList = result.data || [];
+          setTeachers(teachersList);
+
+          // Auto-select first teacher if available, or use special value for auto-assign
+          if (teachersList.length > 0) {
+            setSelectedTeacherId(teachersList[0].id);
+          } else {
+            // Use special value that backend will recognize to auto-create teacher
+            setSelectedTeacherId('auto-assign-admin');
+          }
         }
       } catch (err) {
         console.error('Error fetching teachers:', err);
+        // If fetch fails, still allow conversion with auto-assign
+        setSelectedTeacherId('auto-assign-admin');
       }
       return;
     }
@@ -490,18 +501,26 @@ export function TrialRequests() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Assign Teacher</label>
-                <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a teacher" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teachers.map((teacher) => (
-                      <SelectItem key={teacher.id} value={teacher.id}>
-                        {teacher.fullName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {teachers.length > 0 ? (
+                  <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a teacher" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teachers.map((teacher) => (
+                        <SelectItem key={teacher.id} value={teacher.id}>
+                          {teacher.fullName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-md text-sm">
+                    <p className="text-amber-900">
+                      No teachers available. The student will be automatically assigned to you (Admin).
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
