@@ -55,7 +55,7 @@ export async function POST(
 
     // Handle auto-assign-admin case: create teacher profile for current admin if needed
     if (teacherId === 'auto-assign-admin') {
-      const userId = authPayload?.userId;
+      const userId = authPayload?.id;
 
       if (!userId) {
         return NextResponse.json(
