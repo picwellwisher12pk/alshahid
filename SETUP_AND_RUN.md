@@ -32,13 +32,25 @@ DATABASE_URL="postgresql://username:password@localhost:5432/alshahid_db?schema=p
 # JWT Secret (generate a secure random string)
 JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"
 
-# Optional: Supabase (for file uploads)
-NEXT_PUBLIC_SUPABASE_URL="your-supabase-url"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-anon-key"
+# Supabase Storage (REQUIRED for file uploads like payment receipts)
+# See SUPABASE_STORAGE_SETUP.md for detailed setup instructions
+NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
 SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
 ```
 
-### 3. Setup Database
+### 3. Setup Supabase Storage
+
+**IMPORTANT**: File uploads require Supabase Storage to work on Vercel.
+
+Follow the detailed guide: [SUPABASE_STORAGE_SETUP.md](SUPABASE_STORAGE_SETUP.md)
+
+Quick steps:
+1. Create a Supabase project at [supabase.com](https://supabase.com)
+2. Create a storage bucket named `payment-receipts`
+3. Configure bucket policies for authenticated uploads and public read
+4. Add environment variables to `.env.local` and Vercel
+
+### 4. Setup Database
 
 #### Start PostgreSQL
 Make sure PostgreSQL is running on `localhost:5432`
@@ -74,7 +86,7 @@ This will create:
 - 3 Student accounts (2 with login, 1 without)
 - Sample classes, progress logs, invoices, trial requests
 
-### 4. Run Development Server
+### 5. Run Development Server
 
 ```bash
 npm run dev

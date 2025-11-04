@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { uploadFileToSupabase } from '@/lib/supabase';
 
 export async function POST(req: Request) {
   try {
@@ -20,6 +19,24 @@ export async function POST(req: Request) {
     if (!invoiceId) {
       return NextResponse.json(
         { error: 'Invoice ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate file type (images and PDFs only)
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json(
+        { error: 'Invalid file type. Only images (JPEG, PNG, WebP) and PDFs are allowed.' },
+        { status: 400 }
+      );
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      return NextResponse.json(
+        { error: 'File size too large. Maximum size is 5MB.' },
         { status: 400 }
       );
     }
@@ -56,25 +73,21 @@ export async function POST(req: Request) {
       );
     }
 
-    // Upload file to local storage in public/uploads directory
-    const fileName = `enrollment-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-    const uploadsDir = join(process.cwd(), 'public', 'uploads');
+    // Generate a unique filename
+    const fileExt = file.name.split('.').pop();
+    const sanitizedOriginalName = file.name
+      .replace(/[^a-zA-Z0-9.-]/g, '_')
+      .slice(0, 50); // Limit original name length
+    const fileName = `enrollment-${Date.now()}-${sanitizedOriginalName}`;
+    const storagePath = `enrollment/${fileName}`;
 
-    // Ensure uploads directory exists
-    try {
-      await mkdir(uploadsDir, { recursive: true });
-    } catch (error) {
-      // Directory might already exist, ignore error
-    }
-
-    // Convert file to buffer and write to disk
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const filePath = join(uploadsDir, fileName);
-    await writeFile(filePath, buffer);
-
-    // File URL that can be accessed from the browser
-    const fileUrl = `/uploads/${fileName}`;
+    // Upload to Supabase Storage
+    const fileUrl = await uploadFileToSupabase(
+      'payment-receipts', // Bucket name
+      storagePath,
+      file,
+      file.type
+    );
 
     // Store payment proof as a receipt
     await prisma.$transaction(async (tx) => {
@@ -104,6 +117,23 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error('Error uploading payment proof:', error);
+
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes('Missing Supabase environment variables')) {
+        return NextResponse.json(
+          { error: 'Server configuration error. Please contact support.' },
+          { status: 500 }
+        );
+      }
+      if (error.message.includes('Failed to upload file')) {
+        return NextResponse.json(
+          { error: 'Failed to upload file to storage. Please try again.' },
+          { status: 500 }
+        );
+      }
+    }
+
     return NextResponse.json(
       { error: 'Failed to upload payment proof' },
       { status: 500 }
