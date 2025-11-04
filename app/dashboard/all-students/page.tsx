@@ -25,10 +25,10 @@ import Link from 'next/link';
 interface Student {
   id: string;
   fullName: string;
-  email?: string;
-  phone?: string;
+  contactEmail?: string;
+  contactPhone?: string;
   status: 'ACTIVE' | 'INACTIVE' | 'TRIAL';
-  assignedTeacher?: {
+  teacher?: {
     id: string;
     user: {
       fullName: string;
@@ -36,6 +36,7 @@ interface Student {
   };
   user?: {
     email: string;
+    fullName: string;
   };
   createdAt: string;
 }
@@ -59,8 +60,8 @@ export default function AllStudentsPage() {
         throw new Error('Failed to fetch students');
       }
 
-      const data = await response.json();
-      setStudents(data.students || []);
+      const result = await response.json();
+      setStudents(result.data || []);
     } catch (err) {
       setError('Failed to load students');
       console.error('Error fetching students:', err);
@@ -71,7 +72,7 @@ export default function AllStudentsPage() {
 
   const filteredStudents = students.filter((student) =>
     student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.contactEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.user?.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -160,23 +161,23 @@ export default function AllStudentsPage() {
                     <TableRow key={student.id}>
                       <TableCell className="font-medium">{student.fullName}</TableCell>
                       <TableCell>
-                        {student.user?.email || student.email || (
+                        {student.user?.email || student.contactEmail || (
                           <span className="text-gray-400">N/A</span>
                         )}
                       </TableCell>
-                      <TableCell>{student.phone || <span className="text-gray-400">N/A</span>}</TableCell>
+                      <TableCell>{student.contactPhone || <span className="text-gray-400">N/A</span>}</TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(student.status)}>
                           {student.status}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {student.assignedTeacher ? (
+                        {student.teacher ? (
                           <Link
-                            href={`/dashboard/teachers/${student.assignedTeacher.id}`}
+                            href={`/dashboard/teachers/${student.teacher.id}`}
                             className="text-blue-600 hover:underline"
                           >
-                            {student.assignedTeacher.user.fullName}
+                            {student.teacher.user.fullName}
                           </Link>
                         ) : (
                           <span className="text-gray-400">Not assigned</span>
