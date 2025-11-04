@@ -19,8 +19,27 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, UserPlus, Mail, Calendar, User } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Search, UserPlus, Mail, Calendar, User, MoreVertical, Trash2, UserX, UserCheck } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 interface Student {
   id: string;
@@ -46,6 +65,8 @@ export default function AllStudentsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
+  const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStudents();
@@ -75,6 +96,60 @@ export default function AllStudentsPage() {
     student.contactEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.user?.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleStatusChange = async (studentId: string, newStatus: 'ACTIVE' | 'INACTIVE' | 'TRIAL') => {
+    try {
+      setUpdatingStatus(studentId);
+      const response = await fetch(`/api/students/${studentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update student status');
+      }
+
+      // Update local state
+      setStudents(students.map(s =>
+        s.id === studentId ? { ...s, status: newStatus } : s
+      ));
+
+      toast.success(`Student status updated to ${newStatus}`);
+    } catch (err) {
+      console.error('Error updating status:', err);
+      toast.error('Failed to update student status');
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
+  const handleDeleteStudent = async () => {
+    if (!deletingStudent) return;
+
+    try {
+      const response = await fetch(`/api/students/${deletingStudent.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to deactivate student');
+      }
+
+      // Update local state - mark as INACTIVE
+      setStudents(students.map(s =>
+        s.id === deletingStudent.id ? { ...s, status: 'INACTIVE' } : s
+      ));
+
+      toast.success(`${deletingStudent.fullName} has been deactivated`);
+      setDeletingStudent(null);
+    } catch (err) {
+      console.error('Error deactivating student:', err);
+      toast.error('Failed to deactivate student');
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -187,11 +262,74 @@ export default function AllStudentsPage() {
                         {new Date(student.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <Link href={`/dashboard/students/${student.id}`}>
-                          <Button variant="outline" size="sm">
-                            View Details
-                          </Button>
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link href={`/dashboard/students/${student.id}`}>
+                            <Button variant="outline" size="sm">
+                              View Details
+                            </Button>
+                          </Link>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                disabled={updatingStatus === student.id}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+
+                              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                                Change Status
+                              </DropdownMenuLabel>
+
+                              {student.status !== 'ACTIVE' && (
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(student.id, 'ACTIVE')}
+                                  className="cursor-pointer"
+                                >
+                                  <UserCheck className="mr-2 h-4 w-4" />
+                                  Mark as Active
+                                </DropdownMenuItem>
+                              )}
+
+                              {student.status !== 'TRIAL' && (
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(student.id, 'TRIAL')}
+                                  className="cursor-pointer"
+                                >
+                                  <User className="mr-2 h-4 w-4" />
+                                  Mark as Trial
+                                </DropdownMenuItem>
+                              )}
+
+                              {student.status !== 'INACTIVE' && (
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusChange(student.id, 'INACTIVE')}
+                                  className="cursor-pointer"
+                                >
+                                  <UserX className="mr-2 h-4 w-4" />
+                                  Mark as Inactive
+                                </DropdownMenuItem>
+                              )}
+
+                              <DropdownMenuSeparator />
+
+                              <DropdownMenuItem
+                                onClick={() => setDeletingStudent(student)}
+                                className="cursor-pointer text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Deactivate Student
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -201,6 +339,29 @@ export default function AllStudentsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingStudent} onOpenChange={(open) => !open && setDeletingStudent(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate Student?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to deactivate <strong>{deletingStudent?.fullName}</strong>?
+              This will mark the student as INACTIVE. The student record will remain in the system
+              but they will no longer be counted as active students.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteStudent}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
