@@ -33,6 +33,11 @@ export function ContactForm() {
 
       if (!response.ok) {
         const errorData = await response.json();
+        // Handle validation errors with details
+        if (errorData.details && Array.isArray(errorData.details)) {
+          const errorMessages = errorData.details.map((detail: any) => detail.message).join(', ');
+          throw new Error(errorMessages);
+        }
         throw new Error(errorData.error || 'Failed to send message');
       }
 
@@ -155,14 +160,20 @@ export function ContactForm() {
 
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="contact-name">Full Name *</Label>
+                          <Label htmlFor="contact-name">Full Name * (minimum 2 characters)</Label>
                           <Input
                             id="contact-name"
                             placeholder="John Doe"
                             value={formData.name}
                             onChange={(e) => handleChange('name', e.target.value)}
                             required
+                            minLength={2}
                           />
+                          {formData.name.length > 0 && formData.name.length < 2 && (
+                            <p className="text-xs text-red-600">
+                              Name must be at least 2 characters ({formData.name.length}/2)
+                            </p>
+                          )}
                         </div>
 
                         <div className="space-y-2">
@@ -189,7 +200,7 @@ export function ContactForm() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="contact-message">Message *</Label>
+                        <Label htmlFor="contact-message">Message * (minimum 10 characters)</Label>
                         <Textarea
                           id="contact-message"
                           placeholder="Tell us more about your inquiry..."
@@ -197,7 +208,13 @@ export function ContactForm() {
                           onChange={(e) => handleChange('message', e.target.value)}
                           rows={5}
                           required
+                          minLength={10}
                         />
+                        {formData.message.length > 0 && formData.message.length < 10 && (
+                          <p className="text-xs text-red-600">
+                            Message must be at least 10 characters ({formData.message.length}/10)
+                          </p>
+                        )}
                       </div>
 
                       <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
