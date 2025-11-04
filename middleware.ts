@@ -9,10 +9,11 @@ export const runtime = 'nodejs';
 // Define public routes that don't require authentication
 const publicRoutes = [
   '/',
-  '/login', 
-  '/register', 
+  '/login',
+  '/register',
   '/forgot-password',
   '/api/auth',
+  '/api/enrollment', // Enrollment API (uses magic token auth)
   '/enroll',
   '/enrollment-success',
   '/_next',
