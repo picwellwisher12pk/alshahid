@@ -23,6 +23,12 @@ const publicRoutes = [
 // Define protected routes and their required roles
 const protectedRoutes = ['/dashboard'];
 
+// Routes accessible to all authenticated users (any role)
+const commonAuthenticatedRoutes = [
+  '/dashboard/profile', // All users can access their profile
+  '/api/profile', // All users can update their profile and password
+];
+
 // Role-based route access control
 const roleBasedRoutes: Record<UserRole, string[]> = {
   ADMIN: [
@@ -42,8 +48,7 @@ const roleBasedRoutes: Record<UserRole, string[]> = {
   STUDENT: [
     '/dashboard/schedule',
     '/dashboard/progress',
-    '/dashboard/invoices',
-    '/dashboard/profile'
+    '/dashboard/invoices'
   ]
 } as const;
 
@@ -82,17 +87,27 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith(route)
     );
 
+    // Check if it's a common authenticated route (accessible to all roles)
+    const isCommonAuthenticatedRoute = commonAuthenticatedRoutes.some(route =>
+      pathname.startsWith(route)
+    );
+
     const isRoleBasedRoute = Object.values(roleBasedRoutes).some(routes =>
       routes.some(route => pathname.startsWith(route))
     );
 
     // Handle protected routes
-    if (isProtectedRoute || isRoleBasedRoute) {
+    if (isProtectedRoute || isRoleBasedRoute || isCommonAuthenticatedRoute) {
       // No token or invalid role, redirect to login
       if (!accessToken || !userRole || !isUserRole(userRole)) {
         const url = new URL('/login', request.url);
         url.searchParams.set('callbackUrl', pathname);
         return NextResponse.redirect(url);
+      }
+
+      // Common authenticated routes are accessible to all roles
+      if (isCommonAuthenticatedRoute) {
+        return NextResponse.next();
       }
 
       // Check role-based access for role-based routes
