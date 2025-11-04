@@ -28,7 +28,6 @@ model User {
   teacherProfile          Teacher?
   studentProfile          Student?
   verifiedPaymentReceipts PaymentReceipt[] @relation("VerifiedBy")
-  verifiedEnrollmentPayments EnrollmentPayment[] @relation("VerifiedBy")
 
   @@map("users")
 }
@@ -80,16 +79,13 @@ model TrialRequest {
   preferredTime   String?             @map("preferred_time")
   additionalNotes String?             @map("additional_notes")
   status          TrialRequestStatus  @default(PENDING)
-  enrollmentToken String?             @unique @map("enrollment_token") // For secure enrollment link
-  enrollmentTokenExpiresAt DateTime?  @map("enrollment_token_expires_at") // 24-48h expiration
-  enrollmentPaymentId String?         @unique @map("enrollment_payment_id") // Link to enrollment payment
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   courseId        String?             @map("course_id")
-  
+
   // Relations
   course          Course?             @relation(fields: [courseId], references: [id])
-  enrollmentPayment EnrollmentPayment?
+  invoices        Invoice[]           // Can have enrollment invoice before student exists
 
   @@map("trial_requests")
 }
@@ -171,7 +167,6 @@ model Student {
   contactPhone  String?       @map("contact_phone")
   contactEmail  String?       @map("contact_email")
   status        StudentStatus @default(ACTIVE)
-  enrollmentPaymentId String?  @unique @map("enrollment_payment_id") // Link to enrollment payment
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
@@ -181,7 +176,6 @@ model Student {
   classes               Class[]
   progressLogs          ProgressLog[]
   invoices              Invoice[]
-  enrollmentPayment     EnrollmentPayment?  @relation("StudentEnrollment", fields: [enrollmentPaymentId], references: [id])
 
   @@map("students")
 }
@@ -235,26 +229,49 @@ model ProgressLog {
   @@map("progress_logs")
 }
 
-// Invoice management
+// Unified Invoice management - for both enrollment fees and monthly tuition
 model Invoice {
-  id        String        @id @default(cuid())
-  studentId String        @map("student_id")
-  teacherId String?       @map("teacher_id")
-  amount    Decimal       @db.Decimal(10, 2)
-  dueDate   DateTime      @map("due_date") @db.Date
-  issueDate DateTime      @default(now()) @map("issue_date") @db.Date
-  status    InvoiceStatus @default(UNPAID)
-  month     String? // e.g., "January 2025" for tracking
-  notes     String?
-  createdAt DateTime      @default(now()) @map("created_at")
-  updatedAt DateTime      @updatedAt @map("updated_at")
+  id             String        @id @default(cuid())
+  invoiceNumber  String        @unique @default(cuid()) @map("invoice_number") // Unique invoice identifier
+  invoiceType    InvoiceType   @default(MONTHLY) @map("invoice_type")
+
+  // Relations - either student (existing) OR trialRequest (enrollment before student exists)
+  studentId      String?       @map("student_id")
+  trialRequestId String?       @map("trial_request_id")
+  teacherId      String?       @map("teacher_id")
+
+  // Payment details
+  amount         Decimal       @db.Decimal(10, 2)
+  currency       String        @default("PKR")
+  dueDate        DateTime      @map("due_date") @db.Date
+  issueDate      DateTime      @default(now()) @map("issue_date") @db.Date
+  status         InvoiceStatus @default(UNPAID)
+
+  // For monthly invoices
+  month          String?       // e.g., "January 2025" for tracking
+  year           Int?
+
+  // Magic link for payment (used when student doesn't have account yet)
+  magicToken       String?     @unique @map("magic_token") // Hashed token for magic link
+  magicTokenExpiry DateTime?   @map("magic_token_expiry")
+
+  notes          String?
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
 
   // Relations
-  student         Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student         Student?         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  trialRequest    TrialRequest?    @relation(fields: [trialRequestId], references: [id], onDelete: Cascade)
   teacher         Teacher?         @relation(fields: [teacherId], references: [id], onDelete: SetNull)
   paymentReceipts PaymentReceipt[]
 
   @@map("invoices")
+}
+
+enum InvoiceType {
+  ENROLLMENT  // One-time enrollment fee (before student account exists)
+  MONTHLY     // Regular monthly tuition
+  OTHER       // Custom invoices
 }
 
 enum InvoiceStatus {
@@ -265,18 +282,18 @@ enum InvoiceStatus {
   CANCELLED
 }
 
-// Payment receipt uploads
+// Payment receipt uploads - unified for all invoice types
 model PaymentReceipt {
   id                 String                    @id @default(cuid())
   invoiceId          String                    @map("invoice_id")
   fileUrl            String                    @map("file_url") // Supabase Storage URL
-  uploadedBy         String?                   @map("uploaded_by") // User who uploaded
+  uploadedBy         String?                   @map("uploaded_by") // User who uploaded (name/email if no account)
   uploadedAt         DateTime                  @default(now()) @map("uploaded_at")
   verificationStatus PaymentVerificationStatus @default(PENDING) @map("verification_status")
   verifiedByUserId   String?                   @map("verified_by_user_id")
   verifiedAt         DateTime?                 @map("verified_at")
   rejectionReason    String?                   @map("rejection_reason")
-  notes              String?
+  notes              String?                   // Notes from student/payer
 
   // Relations
   invoice    Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
@@ -285,33 +302,9 @@ model PaymentReceipt {
   @@map("payment_receipts")
 }
 
-// Enrollment payment for trial conversion
-model EnrollmentPayment {
-  id                  String                    @id @default(cuid())
-  trialRequestId      String                    @unique @map("trial_request_id")
-  amount              Decimal                   @db.Decimal(10, 2)
-  currency            String                    @default("PKR")
-  magicToken          String?                   @unique @map("magic_token") // Hashed token for magic link
-  magicTokenExpiry    DateTime?                 @map("magic_token_expiry")
-  paymentProofUrl     String?                   @map("payment_proof_url") // Supabase Storage URL
-  notes               String?                   // Optional notes from student
-  status              PaymentVerificationStatus @default(PENDING)
-  verifiedByUserId    String?                   @map("verified_by_user_id")
-  verifiedAt          DateTime?                 @map("verified_at")
-  rejectionReason     String?                   @map("rejection_reason")
-  createdAt           DateTime                  @default(now()) @map("created_at")
-  updatedAt           DateTime                  @updatedAt @map("updated_at")
-
-  // Relations
-  trialRequest        TrialRequest              @relation(fields: [trialRequestId], references: [id])
-  verifiedBy          User?                     @relation("VerifiedBy", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
-  student             Student?                  @relation("StudentEnrollment")
-
-  @@map("enrollment_payments")
-}
-
 enum PaymentVerificationStatus {
-  PENDING
-  APPROVED
-  REJECTED
+  PENDING       // Waiting for student to upload payment proof
+  SUBMITTED     // Student has uploaded proof, waiting for admin verification
+  APPROVED      // Admin has approved the payment
+  REJECTED      // Admin has rejected the payment
 }

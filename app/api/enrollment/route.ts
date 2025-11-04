@@ -1,55 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { randomBytes } from 'node:crypto';
-import { sendEnrollmentEmail } from '@/lib/email/templates/enrollment';
+import { createHash } from 'node:crypto';
 
-export async function POST(req: Request) {
-  try {
-    const { trialRequestId } = await req.json();
-
-    // Find the trial request
-    const trialRequest = await prisma.trialRequest.findUnique({
-      where: { id: trialRequestId },
-    });
-
-    if (!trialRequest) {
-      return NextResponse.json(
-        { error: 'Trial request not found' },
-        { status: 404 }
-      );
-    }
-
-    // Generate a secure token
-    const token = randomBytes(32).toString('hex');
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 36); // 36 hours expiry
-
-    // Update trial request with token
-    await prisma.trialRequest.update({
-      where: { id: trialRequestId },
-      data: {
-        enrollmentToken: token,
-        enrollmentTokenExpiresAt: expiresAt,
-      },
-    });
-
-    // Send enrollment email with the token
-    const enrollmentUrl = `${process.env.NEXT_PUBLIC_APP_URL}/enroll/${token}`;
-    await sendEnrollmentEmail(trialRequest.contactEmail, {
-      studentName: trialRequest.studentName,
-      enrollmentUrl,
-    });
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error generating enrollment link:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate enrollment link' },
-      { status: 500 }
-    );
-  }
-}
-
+// GET - Validate magic token and get enrollment invoice details
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -62,27 +15,79 @@ export async function GET(req: Request) {
       );
     }
 
-    // Find trial request by token
-    const trialRequest = await prisma.trialRequest.findFirst({
+    // Hash the token to compare with stored hash
+    const hashedToken = createHash('sha256').update(token).digest('hex');
+
+    // Find invoice by hashed magic token
+    const invoice = await prisma.invoice.findFirst({
       where: {
-        enrollmentToken: token,
-        enrollmentTokenExpiresAt: {
-          gt: new Date(),
+        magicToken: hashedToken,
+        invoiceType: 'ENROLLMENT',
+      },
+      include: {
+        trialRequest: true,
+        paymentReceipts: {
+          orderBy: { uploadedAt: 'desc' },
+          take: 1,
         },
       },
     });
 
-    if (!trialRequest) {
+    if (!invoice) {
+      console.error('Enrollment invoice not found for token');
       return NextResponse.json(
-        { error: 'Invalid or expired enrollment link' },
+        { error: 'Invalid enrollment link' },
+        { status: 400 }
+      );
+    }
+
+    // Check expiry separately for better error message
+    const now = new Date();
+    if (!invoice.magicTokenExpiry || invoice.magicTokenExpiry <= now) {
+      console.error('Enrollment link expired:', {
+        expiry: invoice.magicTokenExpiry,
+        now,
+      });
+      return NextResponse.json(
+        {
+          error:
+            'Enrollment link has expired. Please request a new link from the administrator.',
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!invoice.trialRequest) {
+      console.error('Trial request not found for enrollment invoice');
+      return NextResponse.json(
+        { error: 'Invalid enrollment link' },
+        { status: 400 }
+      );
+    }
+
+    // Check if already paid
+    if (invoice.status === 'PAID') {
+      return NextResponse.json(
+        {
+          error:
+            'This enrollment has already been paid and processed. Please contact the administrator.',
+        },
         { status: 400 }
       );
     }
 
     return NextResponse.json({
-      trialRequestId: trialRequest.id,
-      studentName: trialRequest.studentName,
-      courseName: trialRequest.courseName,
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      trialRequestId: invoice.trialRequest.id,
+      studentName: invoice.trialRequest.studentName,
+      courseName: invoice.trialRequest.courseName,
+      amount: invoice.amount,
+      currency: invoice.currency,
+      status: invoice.status,
+      dueDate: invoice.dueDate,
+      // Include last payment receipt status if exists
+      lastReceiptStatus: invoice.paymentReceipts[0]?.verificationStatus,
     });
   } catch (error) {
     console.error('Error validating enrollment token:', error);

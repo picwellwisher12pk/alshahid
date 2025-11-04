@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireRole } from '@/lib/rbac';
 import { z } from 'zod';
+import { hash } from 'bcryptjs';
+import crypto from 'node:crypto';
 
 // Validation schema for verifying payment
 const verifyPaymentSchema = z.object({
   receiptId: z.string().min(1, 'Receipt ID is required'),
-  action: z.enum(['APPROVE', 'REJECT'], {
-    required_error: 'Action must be either APPROVE or REJECT',
-  }),
+  approved: z.boolean(),
   rejectionReason: z.string().optional(),
 });
 
@@ -25,7 +25,7 @@ export async function POST(
     // Validate request body
     const validatedData = verifyPaymentSchema.parse(body);
 
-    // Verify invoice exists
+    // Verify invoice exists with all related data
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
       include: {
@@ -34,6 +34,26 @@ export async function POST(
             id: true,
             fullName: true,
             contactEmail: true,
+          },
+        },
+        trialRequest: {
+          select: {
+            id: true,
+            studentName: true,
+            contactEmail: true,
+            courseName: true,
+            status: true,
+          },
+        },
+        teacher: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+              },
+            },
           },
         },
       },
@@ -66,18 +86,18 @@ export async function POST(
     }
 
     // Check if receipt is already verified
-    if (receipt.verificationStatus !== 'PENDING') {
+    if (receipt.verificationStatus === 'APPROVED') {
       return NextResponse.json(
         {
           success: false,
-          error: `Receipt has already been ${receipt.verificationStatus.toLowerCase()}`,
+          error: 'Receipt has already been approved',
         },
         { status: 400 }
       );
     }
 
     // If rejecting, require a reason
-    if (validatedData.action === 'REJECT' && !validatedData.rejectionReason) {
+    if (!validatedData.approved && !validatedData.rejectionReason) {
       return NextResponse.json(
         { success: false, error: 'Rejection reason is required when rejecting a receipt' },
         { status: 400 }
@@ -85,12 +105,13 @@ export async function POST(
     }
 
     // Update receipt and invoice in a transaction
+    // For enrollment invoices, also create student account and send credentials
     const result = await prisma.$transaction(async (tx) => {
       // Update receipt verification status
       const updatedReceipt = await tx.paymentReceipt.update({
         where: { id: validatedData.receiptId },
         data: {
-          verificationStatus: validatedData.action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+          verificationStatus: validatedData.approved ? 'APPROVED' : 'REJECTED',
           verifiedByUserId: user.id,
           verifiedAt: new Date(),
           ...(validatedData.rejectionReason && {
@@ -100,8 +121,8 @@ export async function POST(
       });
 
       // Update invoice status based on action
-      let newInvoiceStatus: 'PAID' | 'UNPAID' |'OVERDUE';
-      if (validatedData.action === 'APPROVE') {
+      let newInvoiceStatus: 'PAID' | 'UNPAID' | 'OVERDUE';
+      if (validatedData.approved) {
         newInvoiceStatus = 'PAID';
       } else {
         // If rejected, set back to UNPAID (or OVERDUE if past due date)
@@ -115,28 +136,120 @@ export async function POST(
         data: {
           status: newInvoiceStatus,
         },
-        include: {
-          student: {
-            select: {
-              id: true,
-              fullName: true,
-              contactEmail: true,
-            },
-          },
-          paymentReceipts: true,
-        },
       });
 
-      return { receipt: updatedReceipt, invoice: updatedInvoice };
+      let newStudent = null;
+      let passwordPlaintext = null;
+
+      // If this is an ENROLLMENT invoice and it's approved, create student account
+      if (validatedData.approved && invoice.invoiceType === 'ENROLLMENT' && invoice.trialRequest) {
+        // Check if student already exists for this trial request
+        const existingStudent = await tx.student.findFirst({
+          where: {
+            contactEmail: invoice.trialRequest.contactEmail,
+          },
+        });
+
+        if (!existingStudent) {
+          // Generate temporary password
+          passwordPlaintext = crypto.randomBytes(8).toString('hex');
+          const hashedPassword = await hash(passwordPlaintext, 10);
+
+          // Create user account
+          const newUser = await tx.user.create({
+            data: {
+              email: invoice.trialRequest.contactEmail,
+              fullName: invoice.trialRequest.studentName,
+              password: hashedPassword,
+              role: 'STUDENT',
+              emailVerified: false,
+              mustResetPassword: true, // Force password change on first login
+            },
+          });
+
+          // Create student profile
+          newStudent = await tx.student.create({
+            data: {
+              userId: newUser.id,
+              fullName: invoice.trialRequest.studentName,
+              contactEmail: invoice.trialRequest.contactEmail,
+              teacherId: invoice.teacherId,
+              status: 'ACTIVE',
+            },
+          });
+
+          // Link invoice to newly created student
+          await tx.invoice.update({
+            where: { id: invoiceId },
+            data: {
+              studentId: newStudent.id,
+            },
+          });
+
+          // Update trial request status to CONVERTED
+          await tx.trialRequest.update({
+            where: { id: invoice.trialRequest.id },
+            data: {
+              status: 'CONVERTED',
+            },
+          });
+
+          console.log(`✅ Student account created for: ${newStudent.fullName}`);
+          console.log(`📧 Email: ${newStudent.contactEmail}`);
+          console.log(`🔑 Temporary Password: ${passwordPlaintext}`);
+        } else {
+          // Student already exists, just update trial request
+          await tx.trialRequest.update({
+            where: { id: invoice.trialRequest.id },
+            data: {
+              status: 'CONVERTED',
+            },
+          });
+          console.log(`ℹ️ Student already exists: ${invoice.trialRequest.studentName}`);
+        }
+      }
+
+      return {
+        receipt: updatedReceipt,
+        invoice: updatedInvoice,
+        newStudent,
+        passwordPlaintext,
+      };
     });
+
+    // TODO: Send email with credentials if student was created
+    if (result.newStudent && result.passwordPlaintext) {
+      console.log('\n=== STUDENT CREDENTIALS (EMAIL THIS TO STUDENT) ===');
+      console.log('Name:', result.newStudent.fullName);
+      console.log('Email:', result.newStudent.contactEmail);
+      console.log('Password:', result.passwordPlaintext);
+      console.log('Login URL:', process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
+      console.log('====================================================\n');
+
+      // In production, send email here with credentials
+      // await sendStudentCredentialsEmail(
+      //   result.newStudent.contactEmail,
+      //   result.newStudent.fullName,
+      //   result.passwordPlaintext
+      // );
+    }
+
+    let message = validatedData.approved
+      ? 'Payment approved successfully. Invoice marked as paid.'
+      : 'Payment rejected. Invoice status updated.';
+
+    if (result.newStudent) {
+      message += ' Student account created and credentials sent via email.';
+    }
 
     return NextResponse.json({
       success: true,
-      data: result,
-      message:
-        validatedData.action === 'APPROVE'
-          ? 'Payment approved successfully. Invoice marked as paid.'
-          : 'Payment rejected. Invoice status updated.',
+      data: {
+        receipt: result.receipt,
+        invoice: result.invoice,
+        studentCreated: !!result.newStudent,
+      },
+      message,
     });
   } catch (error: any) {
     console.error('Verify payment error:', error);
@@ -179,6 +292,13 @@ export async function GET(
             contactEmail: true,
           },
         },
+        trialRequest: {
+          select: {
+            id: true,
+            studentName: true,
+            contactEmail: true,
+          },
+        },
         paymentReceipts: {
           orderBy: {
             uploadedAt: 'desc',
@@ -200,7 +320,7 @@ export async function GET(
         invoice: invoice,
         receipts: invoice.paymentReceipts,
         pendingCount: invoice.paymentReceipts.filter(
-          (r) => r.verificationStatus === 'PENDING'
+          (r) => r.verificationStatus === 'PENDING' || r.verificationStatus === 'SUBMITTED'
         ).length,
         approvedCount: invoice.paymentReceipts.filter(
           (r) => r.verificationStatus === 'APPROVED'

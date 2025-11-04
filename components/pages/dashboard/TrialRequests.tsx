@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Clock, Search, Filter, Loader2, Eye, Copy, Check } from 'lucide-react';
+import { CheckCircle2, Clock, Search, Filter, Loader2, Eye, Copy, Check, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -50,6 +50,8 @@ export function TrialRequests() {
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [enrollmentFee, setEnrollmentFee] = useState('5000');
   const [currency, setCurrency] = useState('PKR');
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch trial requests from API
   useEffect(() => {
@@ -217,6 +219,39 @@ export function TrialRequests() {
     }
   };
 
+  const openDeleteDialog = (request: TrialRequest) => {
+    setSelectedRequest(request);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteRequest = async () => {
+    if (!selectedRequest) return;
+
+    try {
+      setIsDeleting(true);
+      const response = await fetch(`/api/trial-requests/${selectedRequest.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete trial request');
+      }
+
+      // Remove from local state
+      setTrialRequests((prev) => prev.filter((req) => req.id !== selectedRequest.id));
+
+      setIsDeleteDialogOpen(false);
+      setIsDetailsOpen(false);
+      alert('Trial request deleted successfully!');
+    } catch (err) {
+      console.error('Error deleting trial request:', err);
+      alert(err instanceof Error ? err.message : 'Failed to delete trial request. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between space-y-4 sm:flex-row sm:items-center sm:space-y-0">
@@ -337,6 +372,14 @@ export function TrialRequests() {
                             >
                               <Eye className="mr-1 h-3 w-3" />
                               View Details
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openDeleteDialog(request)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
                         </TableCell>
@@ -462,23 +505,36 @@ export function TrialRequests() {
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDetailsOpen(false)} disabled={isUpdatingStatus}>
-              Close
-            </Button>
+          <DialogFooter className="flex justify-between">
             <Button
-              onClick={handleUpdateStatus}
-              disabled={isUpdatingStatus || newStatus === selectedRequest?.status}
+              variant="destructive"
+              onClick={() => {
+                setIsDetailsOpen(false);
+                setIsDeleteDialogOpen(true);
+              }}
+              disabled={isUpdatingStatus}
             >
-              {isUpdatingStatus ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                'Update Status'
-              )}
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
             </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsDetailsOpen(false)} disabled={isUpdatingStatus}>
+                Close
+              </Button>
+              <Button
+                onClick={handleUpdateStatus}
+                disabled={isUpdatingStatus || newStatus === selectedRequest?.status}
+              >
+                {isUpdatingStatus ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  'Update Status'
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -569,6 +625,55 @@ export function TrialRequests() {
                 </>
               ) : (
                 'Convert & Send Email'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Trial Request</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this trial request? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedRequest && (
+            <div className="space-y-2 py-4">
+              <div className="bg-red-50 border border-red-200 p-4 rounded-md">
+                <p className="text-sm font-medium text-red-900 mb-2">Request Details:</p>
+                <p className="text-sm text-red-800">Parent: {selectedRequest.requesterName}</p>
+                <p className="text-sm text-red-800">Student: {selectedRequest.studentName}</p>
+                <p className="text-sm text-red-800">Email: {selectedRequest.contactEmail}</p>
+                <p className="text-sm text-red-800 mt-2">Status: {selectedRequest.status}</p>
+              </div>
+              {selectedRequest.status === 'CONVERTED' && (
+                <div className="bg-amber-50 border border-amber-200 p-3 rounded-md text-sm">
+                  <p className="text-amber-900 font-medium">Warning:</p>
+                  <p className="text-amber-800">
+                    This trial request has been converted to a student. Deleting it may not be allowed.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteRequest} disabled={isDeleting}>
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Permanently
+                </>
               )}
             </Button>
           </DialogFooter>

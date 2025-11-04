@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
       whereClause.status = status;
     }
 
-    // Fetch invoices with pagination
+    // Fetch invoices with pagination (includes both enrollment and monthly invoices)
     const [invoices, total] = await Promise.all([
       prisma.invoice.findMany({
         where: whereClause,
@@ -169,6 +169,14 @@ export async function GET(request: NextRequest) {
                   },
                 },
               },
+            },
+          },
+          trialRequest: {
+            select: {
+              id: true,
+              studentName: true,
+              contactEmail: true,
+              courseName: true,
             },
           },
           paymentReceipts: {

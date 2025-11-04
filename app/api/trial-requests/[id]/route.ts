@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/jwt';
+import { requireRole } from '@/lib/rbac';
 import { cookies } from 'next/headers';
 
 const updateTrialRequestSchema = z.object({
@@ -107,36 +108,75 @@ export async function PATCH(
   }
 }
 
-// DELETE - Delete trial request
+// DELETE - Delete trial request (Admin only)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const payload = await authenticate(request);
-    if (!payload) {
+    // Only admins can delete trial requests
+    await requireRole(request, ['ADMIN']);
+
+    const { id } = await params;
+
+    // Check if trial request exists and get its status
+    const trialRequest = await prisma.trialRequest.findUnique({
+      where: { id },
+      include: {
+        invoices: {
+          include: {
+            student: true, // Check if already converted to student
+          },
+        },
+      },
+    });
+
+    if (!trialRequest) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
+        { error: 'Trial request not found' },
+        { status: 404 }
       );
     }
 
-    const { id } = await params;
-    await prisma.trialRequest.delete({
-      where: { id },
+    // Prevent deletion if already converted to a student
+    const hasStudent = trialRequest.invoices.some(invoice => invoice.student);
+    if (trialRequest.status === 'CONVERTED' && hasStudent) {
+      return NextResponse.json(
+        { error: 'Cannot delete trial request that has been converted to a student. Please delete the student record instead.' },
+        { status: 400 }
+      );
+    }
+
+    // Delete in transaction to handle related records
+    await prisma.$transaction(async (tx) => {
+      // Delete invoices if exists (will cascade to payment receipts due to FK constraint)
+      await tx.invoice.deleteMany({
+        where: { trialRequestId: id },
+      });
+
+      // Delete the trial request
+      await tx.trialRequest.delete({
+        where: { id },
+      });
     });
 
     return NextResponse.json({
       message: 'Trial request deleted successfully',
     });
   } catch (error: any) {
+    console.error('Delete trial request error:', error);
+
+    if (error.message === 'Unauthorized' || error.message.includes('Forbidden')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+
     if (error.code === 'P2025') {
       return NextResponse.json(
         { error: 'Trial request not found' },
         { status: 404 }
       );
     }
-    console.error('Delete trial request error:', error);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

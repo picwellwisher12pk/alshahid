@@ -59,7 +59,7 @@ export async function GET(
     // Authorization: Check if user has access to this invoice
     if (user.role === 'TEACHER') {
       const teacherId = await getTeacherId(user.id);
-      if (!teacherId || invoice.student.teacherId !== teacherId) {
+      if (!teacherId || !invoice.student || invoice.student.teacherId !== teacherId) {
         return NextResponse.json(
           { success: false, error: 'Forbidden' },
           { status: 403 }

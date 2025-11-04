@@ -167,7 +167,7 @@ export async function GET(
       const teacher = await prisma.teacher.findUnique({
         where: { userId: user.id },
       });
-      if (!teacher || invoice.student.teacherId !== teacher.id) {
+      if (!teacher || !invoice.student || invoice.student.teacherId !== teacher.id) {
         return NextResponse.json(
           { success: false, error: 'Forbidden' },
           { status: 403 }

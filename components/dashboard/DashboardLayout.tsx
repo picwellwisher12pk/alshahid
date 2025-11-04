@@ -103,16 +103,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`group flex items-center gap-3 px-3 py-3 text-sm font-medium rounded-md transition-colors ${
-                    pathname === item.href
+                  className={`group flex items-center gap-3 px-3 py-3 text-sm font-medium rounded-md transition-colors ${pathname === item.href
                       ? 'bg-gray-100 text-gray-900'
                       : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   <item.icon
-                    className={`h-5 w-5 flex-shrink-0 ${
-                      pathname === item.href ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-500'
-                    }`}
+                    className={`h-5 w-5 flex-shrink-0 ${pathname === item.href ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-500'
+                      }`}
                     aria-hidden="true"
                   />
                   <span>{item.name}</span>
@@ -201,17 +199,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`group flex items-center gap-3 px-3 py-3 text-sm font-medium rounded-md transition-colors ${
-                    pathname === item.href
+                  className={`group flex items-center gap-3 px-3 py-3 text-sm font-medium rounded-md transition-colors ${pathname === item.href
                       ? 'bg-gray-100 text-gray-900'
                       : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
+                    }`}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <item.icon
-                    className={`h-5 w-5 flex-shrink-0 ${
-                      pathname === item.href ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-500'
-                    }`}
+                    className={`h-5 w-5 flex-shrink-0 ${pathname === item.href ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-500'
+                      }`}
                     aria-hidden="true"
                   />
                   <span>{item.name}</span>
@@ -223,7 +219,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         {/* Main scrollable content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {children}
           </div>
         </main>

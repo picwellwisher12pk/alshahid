@@ -11,7 +11,7 @@ const convertTrialSchema = z.object({
   currency: z.string().default('PKR'),
 });
 
-// POST - Convert trial request to student with enrollment payment (Option B)
+// POST - Convert trial request to student with enrollment invoice (Unified System)
 // Admin triggers this, student gets magic link for payment, then gets account after approval
 export async function POST(
   request: NextRequest,
@@ -37,6 +37,11 @@ export async function POST(
     // Get trial request
     const trialRequest = await prisma.trialRequest.findUnique({
       where: { id: trialRequestId },
+      include: {
+        invoices: {
+          where: { invoiceType: 'ENROLLMENT' },
+        },
+      },
     });
 
     if (!trialRequest) {
@@ -101,27 +106,81 @@ export async function POST(
       );
     }
 
+    // Check if enrollment invoice already exists
+    const existingInvoice = trialRequest.invoices.find(
+      (inv) => inv.invoiceType === 'ENROLLMENT'
+    );
+
+    // If invoice exists and is already paid/verified, don't allow recreation
+    if (
+      existingInvoice &&
+      (existingInvoice.status === 'PAID' ||
+        existingInvoice.status === 'PENDING_VERIFICATION')
+    ) {
+      return NextResponse.json(
+        {
+          error: `Enrollment invoice already ${existingInvoice.status.toLowerCase()}. Cannot recreate.`,
+        },
+        { status: 400 }
+      );
+    }
+
     // Generate magic token
     const magicToken = crypto.randomBytes(32).toString('hex');
-    const hashedToken = crypto.createHash('sha256').update(magicToken).digest('hex');
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(magicToken)
+      .digest('hex');
 
     // Set expiration to 48 hours from now
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 48);
 
-    // Create enrollment payment record with magic link
+    // Set due date to 7 days from now
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 7);
+
+    // Create or update enrollment invoice with magic link
     const result = await prisma.$transaction(async (tx) => {
-      // Create enrollment payment record
-      const enrollmentPayment = await tx.enrollmentPayment.create({
-        data: {
-          trialRequestId,
-          amount: enrollmentFee,
-          currency,
-          magicToken: hashedToken,
-          magicTokenExpiry: expiresAt,
-          status: 'PENDING',
-        },
-      });
+      let enrollmentInvoice;
+
+      if (existingInvoice) {
+        // Update existing invoice with new token and details
+        enrollmentInvoice = await tx.invoice.update({
+          where: { id: existingInvoice.id },
+          data: {
+            amount: enrollmentFee,
+            currency,
+            magicToken: hashedToken,
+            magicTokenExpiry: expiresAt,
+            dueDate,
+            teacherId,
+            status: 'UNPAID',
+            notes: 'Enrollment fee - updated',
+          },
+        });
+
+        // Clear any previous payment receipts
+        await tx.paymentReceipt.deleteMany({
+          where: { invoiceId: existingInvoice.id },
+        });
+      } else {
+        // Create new enrollment invoice
+        enrollmentInvoice = await tx.invoice.create({
+          data: {
+            invoiceType: 'ENROLLMENT',
+            trialRequestId,
+            teacherId,
+            amount: enrollmentFee,
+            currency,
+            dueDate,
+            magicToken: hashedToken,
+            magicTokenExpiry: expiresAt,
+            status: 'UNPAID',
+            notes: 'Enrollment fee',
+          },
+        });
+      }
 
       // Update trial request status to SCHEDULED (waiting for payment)
       const updatedTrialRequest = await tx.trialRequest.update({
@@ -129,7 +188,7 @@ export async function POST(
         data: { status: 'SCHEDULED' },
       });
 
-      return { enrollmentPayment, trialRequest: updatedTrialRequest };
+      return { enrollmentInvoice, trialRequest: updatedTrialRequest };
     });
 
     // Generate payment link URL
@@ -159,17 +218,22 @@ export async function POST(
     }
 
     return NextResponse.json({
-      message: 'Trial request converted successfully. Enrollment payment link sent to student.',
+      message:
+        'Trial request converted successfully. Enrollment payment link sent to student.',
       data: {
-        enrollmentPayment: result.enrollmentPayment,
+        enrollmentInvoice: result.enrollmentInvoice,
         trialRequest: result.trialRequest,
-        paymentLink: process.env.NODE_ENV === 'development' ? paymentLinkUrl : undefined,
+        paymentLink:
+          process.env.NODE_ENV === 'development' ? paymentLinkUrl : undefined,
       },
     });
   } catch (error: any) {
     console.error('Convert trial error:', error);
 
-    if (error.message === 'Unauthorized' || error.message.includes('Forbidden')) {
+    if (
+      error.message === 'Unauthorized' ||
+      error.message.includes('Forbidden')
+    ) {
       return NextResponse.json({ error: error.message }, { status: 403 });
     }
 
