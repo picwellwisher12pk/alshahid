@@ -25,22 +25,31 @@ import Link from 'next/link';
 interface Invoice {
   id: string;
   invoiceNumber: string;
+  invoiceType: 'ENROLLMENT' | 'MONTHLY' | 'OTHER';
   amount: number;
-  month: string;
-  year: number;
-  status: 'UNPAID' | 'PAID' | 'OVERDUE' | 'PENDING_VERIFICATION';
+  currency: string;
+  month?: string | null;
+  year?: number | null;
+  status: 'UNPAID' | 'PAID' | 'OVERDUE' | 'PENDING_VERIFICATION' | 'CANCELLED';
   dueDate: string;
-  student: {
+  student?: {
+    id: string;
     fullName: string;
-    assignedTeacher?: {
+    teacher?: {
       user: {
         fullName: string;
       };
     };
-  };
+  } | null;
+  trialRequest?: {
+    id: string;
+    studentName: string;
+    contactEmail: string;
+    courseName?: string | null;
+  } | null;
   paymentReceipts: {
     id: string;
-    status: string;
+    verificationStatus: string;
   }[];
   createdAt: string;
 }
@@ -66,7 +75,7 @@ export default function InvoicesPage() {
       }
 
       const data = await response.json();
-      setInvoices(data.invoices || []);
+      setInvoices(data.data || []);
     } catch (err) {
       setError('Failed to load invoices');
       console.error('Error fetching invoices:', err);
@@ -75,10 +84,42 @@ export default function InvoicesPage() {
     }
   };
 
+  const getStudentName = (invoice: Invoice) => {
+    return invoice.student?.fullName || invoice.trialRequest?.studentName || 'N/A';
+  };
+
+  const getTeacherName = (invoice: Invoice) => {
+    return invoice.student?.teacher?.user.fullName || 'N/A';
+  };
+
+  const getPeriodDisplay = (invoice: Invoice) => {
+    if (invoice.invoiceType === 'ENROLLMENT') {
+      return 'Enrollment Fee';
+    }
+    if (invoice.month && invoice.year) {
+      return `${invoice.month} ${invoice.year}`;
+    }
+    return 'N/A';
+  };
+
+  const getInvoiceTypeLabel = (type: string) => {
+    switch (type) {
+      case 'ENROLLMENT':
+        return 'Enrollment';
+      case 'MONTHLY':
+        return 'Monthly';
+      case 'OTHER':
+        return 'Other';
+      default:
+        return type;
+    }
+  };
+
   const filteredInvoices = invoices.filter((invoice) => {
+    const studentName = getStudentName(invoice);
     const matchesSearch =
       invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      invoice.student.fullName.toLowerCase().includes(searchTerm.toLowerCase());
+      studentName.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus = statusFilter === 'ALL' || invoice.status === statusFilter;
 
@@ -100,17 +141,15 @@ export default function InvoicesPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+  const formatCurrency = (amount: number, currency: string = 'PKR') => {
+    // Simple formatting for PKR and other currencies
+    return `${currency} ${amount.toLocaleString()}`;
   };
 
-  const totalAmount = filteredInvoices.reduce((sum, inv) => sum + inv.amount, 0);
+  const totalAmount = filteredInvoices.reduce((sum, inv) => sum + Number(inv.amount), 0);
   const paidAmount = filteredInvoices
     .filter((inv) => inv.status === 'PAID')
-    .reduce((sum, inv) => sum + inv.amount, 0);
+    .reduce((sum, inv) => sum + Number(inv.amount), 0);
   const pendingAmount = totalAmount - paidAmount;
 
   if (loading) {
@@ -144,7 +183,7 @@ export default function InvoicesPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalAmount)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalAmount, 'PKR')}</div>
             <p className="text-xs text-muted-foreground">All invoices</p>
           </CardContent>
         </Card>
@@ -154,7 +193,7 @@ export default function InvoicesPage() {
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(paidAmount)}</div>
+            <div className="text-2xl font-bold text-green-600">{formatCurrency(paidAmount, 'PKR')}</div>
             <p className="text-xs text-muted-foreground">Collected payments</p>
           </CardContent>
         </Card>
@@ -164,7 +203,7 @@ export default function InvoicesPage() {
             <DollarSign className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{formatCurrency(pendingAmount)}</div>
+            <div className="text-2xl font-bold text-yellow-600">{formatCurrency(pendingAmount, 'PKR')}</div>
             <p className="text-xs text-muted-foreground">Awaiting payment</p>
           </CardContent>
         </Card>
@@ -216,6 +255,7 @@ export default function InvoicesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Type</TableHead>
                     <TableHead>Invoice #</TableHead>
                     <TableHead>Student</TableHead>
                     <TableHead>Teacher</TableHead>
@@ -229,17 +269,22 @@ export default function InvoicesPage() {
                 <TableBody>
                   {filteredInvoices.map((invoice) => (
                     <TableRow key={invoice.id}>
+                      <TableCell>
+                        <Badge variant={invoice.invoiceType === 'ENROLLMENT' ? 'default' : 'secondary'}>
+                          {getInvoiceTypeLabel(invoice.invoiceType)}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                      <TableCell>{invoice.student.fullName}</TableCell>
+                      <TableCell>{getStudentName(invoice)}</TableCell>
                       <TableCell>
-                        {invoice.student.assignedTeacher?.user.fullName || (
-                          <span className="text-gray-400">N/A</span>
-                        )}
+                        <span className={getTeacherName(invoice) === 'N/A' ? 'text-gray-400' : ''}>
+                          {getTeacherName(invoice)}
+                        </span>
                       </TableCell>
-                      <TableCell>
-                        {invoice.month} {invoice.year}
+                      <TableCell>{getPeriodDisplay(invoice)}</TableCell>
+                      <TableCell className="font-semibold">
+                        {invoice.currency} {invoice.amount.toLocaleString()}
                       </TableCell>
-                      <TableCell className="font-semibold">{formatCurrency(invoice.amount)}</TableCell>
                       <TableCell>
                         {new Date(invoice.dueDate).toLocaleDateString()}
                       </TableCell>
