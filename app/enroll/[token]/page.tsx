@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Upload, Loader2, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
@@ -14,11 +13,17 @@ export default function EnrollmentPage({ params }: { params: Promise<{ token: st
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [trialRequest, setTrialRequest] = useState<{
-    id: string;
+  const [enrollmentData, setEnrollmentData] = useState<{
+    invoiceId: string;
+    invoiceNumber: string;
+    trialRequestId: string;
     studentName: string;
     courseName: string | null;
+    amount: number;
+    currency: string;
+    status: string;
+    dueDate: string;
+    lastReceiptStatus?: string;
   } | null>(null);
 
   const [file, setFile] = useState<File | null>(null);
@@ -28,16 +33,15 @@ export default function EnrollmentPage({ params }: { params: Promise<{ token: st
     const validateToken = async () => {
       try {
         const resolvedParams = await params;
-        setToken(resolvedParams.token);
         const response = await fetch(`/api/enrollment?token=${resolvedParams.token}`);
-        
+
         if (!response.ok) {
           const error = await response.json();
           throw new Error(error.error || 'Invalid enrollment link');
         }
 
         const data = await response.json();
-        setTrialRequest(data);
+        setEnrollmentData(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Invalid enrollment link');
       } finally {
@@ -49,14 +53,40 @@ export default function EnrollmentPage({ params }: { params: Promise<{ token: st
   }, [params]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
+    const selectedFile = e.target.files?.[0];
+
+    if (!selectedFile) {
+      return;
     }
+
+    // Validate file size (5MB = 5 * 1024 * 1024 bytes)
+    const maxSize = 5 * 1024 * 1024;
+    if (selectedFile.size > maxSize) {
+      setError('File size must be less than 5MB');
+      setFile(null);
+      // Reset the input
+      e.target.value = '';
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(selectedFile.type)) {
+      setError('Please upload a PDF, JPG, or PNG file');
+      setFile(null);
+      // Reset the input
+      e.target.value = '';
+      return;
+    }
+
+    // Clear any previous errors
+    setError(null);
+    setFile(selectedFile);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!file) {
       setError('Please select a file to upload');
       return;
@@ -66,10 +96,10 @@ export default function EnrollmentPage({ params }: { params: Promise<{ token: st
     setError(null);
 
     try {
-      // Upload file to storage (you'll need to implement this)
+      // Upload file to storage
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('trialRequestId', trialRequest!.id);
+      formData.append('invoiceId', enrollmentData!.invoiceId);
       formData.append('notes', notes);
 
       const response = await fetch('/api/enrollment/upload', {
@@ -111,8 +141,8 @@ export default function EnrollmentPage({ params }: { params: Promise<{ token: st
           </CardHeader>
           <CardContent>
             <p>{error}</p>
-            <Button 
-              onClick={() => router.push('/')} 
+            <Button
+              onClick={() => router.push('/')}
               className="mt-4"
             >
               Return to Home
@@ -139,47 +169,106 @@ export default function EnrollmentPage({ params }: { params: Promise<{ token: st
     );
   }
 
+  // Check if student has already submitted and is awaiting verification
+  const isPendingVerification = enrollmentData?.lastReceiptStatus === 'SUBMITTED';
+
   return (
     <div className="container mx-auto px-4 py-12 max-w-2xl">
       <Card>
         <CardHeader>
           <CardTitle>Complete Your Enrollment</CardTitle>
           <CardDescription>
-            Please upload your enrollment fee payment proof to complete the registration process.
+            {isPendingVerification
+              ? 'Your payment proof is currently under review. You can submit a new proof if needed.'
+              : 'Please upload your enrollment fee payment proof to complete the registration process.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
             <div className="space-y-2">
-              <h3 className="font-medium">Student Information</h3>
+              <h3 className="font-medium">Enrollment Information</h3>
               <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-md">
                 <div>
                   <p className="text-sm text-muted-foreground">Student Name</p>
-                  <p className="font-medium">{trialRequest?.studentName}</p>
+                  <p className="font-medium">{enrollmentData?.studentName}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Course</p>
-                  <p className="font-medium">{trialRequest?.courseName || 'N/A'}</p>
+                  <p className="font-medium">{enrollmentData?.courseName || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Invoice Number</p>
+                  <p className="font-medium">{enrollmentData?.invoiceNumber}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Enrollment Fee</p>
+                  <p className="font-medium text-lg">{enrollmentData?.currency} {enrollmentData?.amount}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Due Date</p>
+                  <p className="font-medium">{enrollmentData?.dueDate ? new Date(enrollmentData.dueDate).toLocaleDateString() : 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="font-medium capitalize">
+                    {isPendingVerification ? (
+                      <span className="text-yellow-600">Pending Verification</span>
+                    ) : (
+                      enrollmentData?.status.toLowerCase().replace('_', ' ')
+                    )}
+                  </p>
                 </div>
               </div>
             </div>
 
+            {isPendingVerification && (
+              <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-md">
+                <p className="text-sm text-yellow-800">
+                  Your previous payment proof is under review. You can submit a new proof if you want to replace it.
+                </p>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="payment-proof">Payment Proof (PDF, JPG, PNG, max 5MB)</Label>
+                <Label htmlFor="payment-proof">Payment Proof * (PDF, JPG, PNG, max 5MB)</Label>
                 <div className="flex items-center justify-center w-full">
                   <label
                     htmlFor="payment-proof"
-                    className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted/30 transition-colors"
+                    className={`flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                      file
+                        ? 'bg-green-50 border-green-300 hover:bg-green-100'
+                        : 'bg-muted/50 hover:bg-muted/30 border-muted-foreground/25'
+                    } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4 text-center">
-                      <Upload className="w-8 h-8 mb-3 text-muted-foreground" />
-                      <p className="mb-2 text-sm text-muted-foreground">
-                        <span className="font-semibold">Click to upload</span> or drag and drop
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {file ? file.name : 'PDF, JPG, or PNG (MAX. 5MB)'}
-                      </p>
+                      {file ? (
+                        <>
+                          <CheckCircle className="w-8 h-8 mb-3 text-green-600" />
+                          <p className="mb-2 text-sm font-semibold text-green-700">
+                            File Selected
+                          </p>
+                          <p className="text-xs text-green-600 break-all px-4">
+                            {file.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {(file.size / 1024).toFixed(2)} KB
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Click to change file
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 mb-3 text-muted-foreground" />
+                          <p className="mb-2 text-sm text-muted-foreground">
+                            <span className="font-semibold">Click to upload</span> or drag and drop
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            PDF, JPG, or PNG (MAX. 5MB)
+                          </p>
+                        </>
+                      )}
                     </div>
                     <input
                       id="payment-proof"
@@ -188,9 +277,15 @@ export default function EnrollmentPage({ params }: { params: Promise<{ token: st
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={handleFileChange}
                       disabled={submitting}
+                      required
                     />
                   </label>
                 </div>
+                {!file && (
+                  <p className="text-xs text-red-600">
+                    * Payment proof is required to complete enrollment
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -202,29 +297,40 @@ export default function EnrollmentPage({ params }: { params: Promise<{ token: st
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   disabled={submitting}
+                  placeholder="e.g., Transaction ID, payment method, etc."
                 />
               </div>
 
               {error && (
-                <div className="p-4 text-sm text-destructive bg-destructive/10 rounded-md">
-                  {error}
+                <div className="p-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
+                  <strong>Error:</strong> {error}
                 </div>
               )}
 
-              <Button 
-                type="submit" 
-                className="w-full"
-                disabled={!file || submitting}
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  'Submit Payment Proof'
+              <div className="space-y-2">
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={!file || submitting}
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading Payment Proof...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      {isPendingVerification ? 'Submit New Payment Proof' : 'Submit Payment Proof'}
+                    </>
+                  )}
+                </Button>
+                {!file && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    Please select a file to enable submission
+                  </p>
                 )}
-              </Button>
+              </div>
             </form>
           </div>
         </CardContent>

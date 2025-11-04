@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
 
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
-    const trialRequestId = formData.get('trialRequestId') as string;
+    const invoiceId = formData.get('invoiceId') as string;
     const notes = (formData.get('notes') as string) || '';
 
     if (!file) {
@@ -15,73 +17,91 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!trialRequestId) {
+    if (!invoiceId) {
       return NextResponse.json(
-        { error: 'Trial request ID is required' },
+        { error: 'Invoice ID is required' },
         { status: 400 }
       );
     }
 
-    // Verify trial request exists and is valid
-    const trialRequest = await prisma.trialRequest.findUnique({
-      where: { id: trialRequestId },
+    // Verify invoice exists and is valid
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      include: {
+        trialRequest: true,
+        paymentReceipts: true,
+      },
     });
 
-    if (!trialRequest) {
+    if (!invoice) {
       return NextResponse.json(
-        { error: 'Invalid trial request' },
+        { error: 'Invalid invoice' },
         { status: 404 }
       );
     }
 
-    // Upload file to storage (you'll need to implement this)
-    // For now, we'll just store the file name
-    const fileName = `enrollment-${Date.now()}-${file.name}`;
-    
-    // In a real implementation, you would upload the file to a storage service here
-    // For example, using Supabase Storage, AWS S3, or similar
-    // const fileUrl = await uploadFileToStorage(file, fileName);
-    
-    // For now, we'll just use a placeholder
-    const fileUrl = `/uploads/${fileName}`;
-
-    // Check if enrollment payment already exists
-    const existingPayment = await prisma.enrollmentPayment.findUnique({
-      where: { trialRequestId },
-    });
-
-    if (existingPayment) {
-      // Update existing payment with proof
-      await prisma.enrollmentPayment.update({
-        where: { id: existingPayment.id },
-        data: {
-          paymentProofUrl: fileUrl,
-          notes,
-          status: 'PENDING',
-        },
-      });
-    } else {
-      // Create new enrollment payment record
-      await prisma.enrollmentPayment.create({
-        data: {
-          trialRequestId,
-          amount: 0, // Will be set by admin when converting trial
-          paymentProofUrl: fileUrl,
-          notes,
-          status: 'PENDING',
-        },
-      });
+    // Check if it's an enrollment invoice
+    if (invoice.invoiceType !== 'ENROLLMENT') {
+      return NextResponse.json(
+        { error: 'This endpoint is for enrollment invoices only' },
+        { status: 400 }
+      );
     }
 
-    // Update trial request status to indicate payment proof submitted
-    await prisma.trialRequest.update({
-      where: { id: trialRequestId },
-      data: {
-        status: 'SCHEDULED', // Waiting for admin to verify payment
-      },
+    // Check if already paid
+    if (invoice.status === 'PAID') {
+      return NextResponse.json(
+        { error: 'Invoice has already been paid and approved' },
+        { status: 400 }
+      );
+    }
+
+    // Upload file to local storage in public/uploads directory
+    const fileName = `enrollment-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const uploadsDir = join(process.cwd(), 'public', 'uploads');
+
+    // Ensure uploads directory exists
+    try {
+      await mkdir(uploadsDir, { recursive: true });
+    } catch (error) {
+      // Directory might already exist, ignore error
+    }
+
+    // Convert file to buffer and write to disk
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const filePath = join(uploadsDir, fileName);
+    await writeFile(filePath, buffer);
+
+    // File URL that can be accessed from the browser
+    const fileUrl = `/uploads/${fileName}`;
+
+    // Store payment proof as a receipt
+    await prisma.$transaction(async (tx) => {
+      // Create payment receipt
+      await tx.paymentReceipt.create({
+        data: {
+          invoiceId,
+          fileUrl,
+          notes,
+          uploadedBy: invoice.trialRequest?.contactEmail || 'Unknown',
+          verificationStatus: 'SUBMITTED', // Student has submitted proof
+        },
+      });
+
+      // Update invoice status to pending verification
+      await tx.invoice.update({
+        where: { id: invoiceId },
+        data: {
+          status: 'PENDING_VERIFICATION',
+        },
+      });
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      message: 'Payment proof submitted successfully. Admin will verify it shortly.',
+    });
   } catch (error) {
     console.error('Error uploading payment proof:', error);
     return NextResponse.json(
@@ -91,22 +111,3 @@ export async function POST(req: Request) {
   }
 }
 
-// Example function to upload file to storage (implement according to your storage solution)
-async function uploadFileToStorage(file: File, fileName: string): Promise<string> {
-  // Implement file upload logic here
-  // Example with Supabase Storage:
-  /*
-  const { data, error } = await supabase.storage
-    .from('enrollment-payments')
-    .upload(fileName, file);
-
-  if (error) {
-    throw error;
-  }
-
-  return data.path;
-  */
-  
-  // For now, return a placeholder
-  return `/uploads/${fileName}`;
-}

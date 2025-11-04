@@ -39,3 +39,6 @@ dist-ssr
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Uploaded files (payment receipts, etc.)
+public/uploads
