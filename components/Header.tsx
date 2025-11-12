@@ -35,13 +35,19 @@ export function Header() {
             </Link>
             <a href="#testimonials" className="text-foreground hover:text-primary transition-colors">Testimonials</a>
             <a href="#contact" className="text-foreground hover:text-primary transition-colors">Contact</a>
+            <Link
+              href="/login"
+              className={`text-foreground hover:text-primary transition-colors ${pathname === '/login' ? 'text-primary font-medium' : ''}`}
+            >
+              Login
+            </Link>
           </nav>
 
           <div className="flex items-center space-x-4">
             <div className="hidden lg:flex items-center space-x-4 text-sm text-muted-foreground">
               <div className="flex items-center space-x-1">
                 <Phone className="w-4 h-4" />
-                <span>+92 310 4362226</span>
+                <span>+92 300 4196274</span>
               </div>
               <a href="mailto:infoalshahidinstitute@gmail.com" className="flex items-center space-x-1 hover:text-primary transition-colors">
                 <Mail className="w-4 h-4" />

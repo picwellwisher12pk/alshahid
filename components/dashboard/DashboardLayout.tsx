@@ -18,7 +18,6 @@ import {
   DollarSign,
   CheckCircle,
   BookOpen,
-  LayoutDashboard,
   User,
   ChevronDown,
   Settings
