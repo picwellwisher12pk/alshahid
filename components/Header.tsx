@@ -45,10 +45,10 @@ export function Header() {
 
           <div className="flex items-center space-x-4">
             <div className="hidden lg:flex items-center space-x-4 text-sm text-muted-foreground">
-              <div className="flex items-center space-x-1">
+              <a href="https://wa.me/923004196274" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-1 hover:text-primary transition-colors font-semibold">
                 <Phone className="w-4 h-4" />
                 <span>+92 300 4196274</span>
-              </div>
+              </a>
               <a href="mailto:info@al-shahid.com" className="flex items-center space-x-1 hover:text-primary transition-colors">
                 <Mail className="w-4 h-4" />
                 <span>info@al-shahid.com</span>

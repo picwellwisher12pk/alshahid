@@ -98,8 +98,8 @@ export function ContactForm() {
                     </div>
                     <div>
                       <p className="font-medium">Phone</p>
-                      <a href="tel:+923104362226" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                        +92 310 4362226
+                      <a href="https://wa.me/923004196274" target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium">
+                        +92 300 4196274
                       </a>
                     </div>
                   </div>

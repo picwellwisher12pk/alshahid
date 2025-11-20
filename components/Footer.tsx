@@ -101,9 +101,9 @@ export function Footer() {
                   href="https://wa.me/923004196274"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center space-x-3 hover:text-white transition-colors text-sm text-white/80"
+                  className="flex items-center space-x-3 hover:text-white transition-colors text-base font-semibold text-white"
                 >
-                  <Phone className="w-4 h-4 flex-shrink-0" />
+                  <Phone className="w-5 h-5 flex-shrink-0" />
                   <span>+92 300 4196274</span>
                 </a>
                 <a
