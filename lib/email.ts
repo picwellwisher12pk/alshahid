@@ -306,7 +306,7 @@ function getContactReplyEmailHtml(
 
     <p style="font-size: 14px; color: #6c757d;">
       <strong>Need Further Assistance?</strong><br>
-      Feel free to reply to this email or contact us directly at infoalshahidinstitute@gmail.com or +92 310 4362226.
+      Feel free to reply to this email or contact us directly at info@al-shahid.com or +92 310 4362226.
     </p>
 
     <p style="font-size: 14px; color: #6c757d; margin-top: 20px;">
@@ -345,7 +345,7 @@ ${originalMessage}
 ---
 
 Need Further Assistance?
-Feel free to reply to this email or contact us directly at infoalshahidinstitute@gmail.com or +92 310 4362226.
+Feel free to reply to this email or contact us directly at info@al-shahid.com or +92 310 4362226.
 
 Best regards,
 ${adminName}
@@ -462,7 +462,7 @@ function getEnrollmentPaymentEmailHtml(
 
     <p style="font-size: 14px; color: #6c757d;">
       <strong>Need Help?</strong><br>
-      If you have any questions, please contact us at infoalshahidinstitute@gmail.com or +92 310 4362226.
+      If you have any questions, please contact us at info@al-shahid.com or +92 310 4362226.
     </p>
   </div>
 
@@ -507,7 +507,7 @@ What happens next?
 - You can then view your class schedule, track progress, and manage future payments
 
 Need Help?
-If you have any questions, please contact us at infoalshahidinstitute@gmail.com or +92 310 4362226.
+If you have any questions, please contact us at info@al-shahid.com or +92 310 4362226.
 
 ---
 © ${new Date().getFullYear()} Al-Shahid Academy. All rights reserved.

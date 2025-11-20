@@ -43,14 +43,14 @@ export function Footer() {
               Learn the beautiful recitation of the Quran with qualified teachers from the comfort of your home.
               Join our global community of learners.
             </p>
-            
+
             <div className="pt-2">
               <h4 className="text-sm mb-3">Follow Us</h4>
               <div className="flex space-x-3">
                 <a href="#" className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
                   <Facebook className="w-4 h-4" />
                 </a>
-                <a href="mailto:infoalshahidinstitute@gmail.com" className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
+                <a href="mailto:info@al-shahid.com" className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
                   <Mail className="w-4 h-4" />
                 </a>
               </div>
@@ -97,18 +97,18 @@ export function Footer() {
             <div className="space-y-4">
               <div className="space-y-3">
                 <h4 className="text-sm font-medium text-white/90">WhatsApp</h4>
-                <a 
-                  href="https://wa.me/923004196274" 
-                  target="_blank" 
+                <a
+                  href="https://wa.me/923004196274"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center space-x-3 hover:text-white transition-colors text-sm text-white/80"
                 >
                   <Phone className="w-4 h-4 flex-shrink-0" />
                   <span>+92 300 4196274</span>
                 </a>
-                <a 
-                  href="https://wa.me/923104362226" 
-                  target="_blank" 
+                <a
+                  href="https://wa.me/923104362226"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center space-x-3 hover:text-white transition-colors text-sm text-white/80"
                 >
@@ -116,25 +116,19 @@ export function Footer() {
                   <span>+92 310 4362226</span>
                 </a>
               </div>
-              
+
               <div className="space-y-3 pt-2">
                 <h4 className="text-sm font-medium text-white/90">Email</h4>
-                <a 
-                  href="mailto:shahidmajeed612@gmail.com" 
+                <a
+                  href="mailto:info@al-shahid.com"
                   className="flex items-start space-x-3 hover:text-white transition-colors text-sm text-white/80"
                 >
                   <Mail className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  <span>shahidmajeed612@gmail.com</span>
+                  <span>info@al-shahid.com</span>
                 </a>
-                <a 
-                  href="mailto:infoalshahidinstitute@gmail.com" 
-                  className="flex items-start space-x-3 hover:text-white transition-colors text-sm text-white/80"
-                >
-                  <Mail className="w-4 h-4 flex-shrink-0 mt-0.5 opacity-0" />
-                  <span>infoalshahidinstitute@gmail.com</span>
-                </a>
+
               </div>
-              
+
               <div className="flex items-center space-x-3 pt-2">
                 <div className="w-4 h-4 flex-shrink-0">
                   <Clock className="w-full h-full text-green-400" />

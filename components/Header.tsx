@@ -49,9 +49,9 @@ export function Header() {
                 <Phone className="w-4 h-4" />
                 <span>+92 300 4196274</span>
               </div>
-              <a href="mailto:infoalshahidinstitute@gmail.com" className="flex items-center space-x-1 hover:text-primary transition-colors">
+              <a href="mailto:info@al-shahid.com" className="flex items-center space-x-1 hover:text-primary transition-colors">
                 <Mail className="w-4 h-4" />
-                <span>infoalshahidinstitute@gmail.com</span>
+                <span>info@al-shahid.com</span>
               </a>
             </div>
             <Button onClick={() => openDialog()}>Book Free Trial</Button>
